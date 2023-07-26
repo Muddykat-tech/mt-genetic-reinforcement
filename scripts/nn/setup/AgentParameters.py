@@ -1,7 +1,5 @@
-
 class MarioCudaAgent:
-
-    def __init__(self, args):
+    def __init__(self):
         self.agent_parameters = {}
         self.agent_parameters["gpu"] = True
 
@@ -25,5 +23,8 @@ class MarioCudaAgent:
         # training process.
         self.agent_parameters["n_frames"] = 4
 
-    def get_parameters(self):
-        return self.agent_parameters
+    def get_parameter(self, param_id):
+        return self.agent_parameters[param_id]
+
+    def set_parameter(self, param_id, value):
+        self.agent_parameters[param_id] = value
