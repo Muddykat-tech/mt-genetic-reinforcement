@@ -11,7 +11,13 @@ class MarioCudaAgent:
         self.agent_parameters["downsample_h"] = 84
 
         # When Training the agent, how many episodes should it get?
-        self.agent_parameters["n_episodes"] = 800
+        self.agent_parameters["n_episodes"] = 400
+
+        # How should the agent train? using the GPU?
+        self.agent_parameters["gpu"] = 0
+
+        # Does the environment that the agent is running in have raw pixel rgb values as the observation?
+        self.agent_parameters["use_rgb_for_raw_state"] = True
 
         # How many times should the agent repeat a chosen action? This can help train the agent faster in some
         # scenarios, marios jump height is tied to how long the button is held, this can be achieved by NN on its
@@ -22,6 +28,11 @@ class MarioCudaAgent:
         # inertia and momentum, including more may eventually result in a more accurate network, but may slow the
         # training process.
         self.agent_parameters["n_frames"] = 4
+
+        # Hyper Parameters
+        self.agent_parameters['input_size'] = 4
+        self.agent_parameters['hidden_size'] = 32
+        self.agent_parameters['output_size'] = 7
 
     def get_parameter(self, param_id):
         return self.agent_parameters[param_id]
