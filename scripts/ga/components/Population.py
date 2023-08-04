@@ -73,6 +73,7 @@ class Population:
         best_individual = sorted(self.old_population, key=lambda ind: ind.fitness, reverse=True)[0]
         logger = self.logger
         render = self.population_settings['render_mode']
+        print('Population Settings: \n' + str(self.population_settings))
         print('Training Model:')
         for i in range(self.n_generations):
             logger.printProgress(i)
@@ -89,6 +90,7 @@ class Population:
             if new_best_individual.fitness > best_individual.fitness:
                 best_individual = new_best_individual
 
+        print('')
         print('Saving best model with fitness: {}'.format(best_individual.fitness))
         self.save_model_parameters(output_folder, 0, save_as_pytorch=False)
 

@@ -27,12 +27,12 @@ class CNN(nn.Module, NeuralNetwork):
         self.conv1 = nn.Conv2d(in_channels=input_size, out_channels=hidden_size, kernel_size=8, stride=4).to(
             self.device)
         self.conv2 = nn.Conv2d(in_channels=hidden_size, out_channels=8, kernel_size=2, stride=2).to(self.device)
-        self.fc1 = nn.Linear(in_features=800, out_features=hidden_size).to(self.device)
+        self.fc1 = nn.Linear(in_features=1800, out_features=hidden_size).to(self.device)
         self.fc2 = nn.Linear(in_features=hidden_size, out_features=output_size).to(self.device)
 
         self.relu = nn.ReLU().to(self.device)
 
-    def forward(self, raw_input: Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, raw_input: Tensor) -> torch.Tensor:
         f_input = self.relu(self.conv1(raw_input.float()))
         f_input = self.relu(self.conv2(f_input))
         f_input = f_input.view(f_input.size(0), -1)

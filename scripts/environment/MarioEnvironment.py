@@ -13,30 +13,28 @@ from nn.setup import AgentParameters
 
 # Functions
 def create_mario_environment(environment_name='SuperMarioBros-v0'):
-    env = gym_super_mario_bros.make(environment_name)
-    env = JoypadSpace(env, SIMPLE_MOVEMENT)
-    env = ConcatObs(env=env, k=4)
-    return env
+    environment = gym_super_mario_bros.make(environment_name)
+    environment = JoypadSpace(environment, SIMPLE_MOVEMENT)
+    environment = ConcatObs(env=environment, k=4)
+    return environment
 
 
 def test_mario_model(model):
     done = False
     state = env.reset()
-    frames = np.zeros(shape=(32, 4, model.agent_parameters['downsample_w'], model.agent_parameters['downsample_h']))
+    frames = np.zeros(shape=(1, model.agent_parameters['n_frames'], model.agent_parameters['downsample_w'], model.agent_parameters['downsample_h']))
     for episode in range(20000):
-        time.sleep(0.01)
         env.render()
         observation = torch.from_numpy(state.copy()).float()
-        processed_state = model.preprocess.forward(observation[episode % 4, ])
-        frames[episode % 4, 0] = processed_state
+        processed_state = model.preprocess.forward(observation[episode % model.agent_parameters['n_frames'], ])
+        frames[0, episode % model.agent_parameters['n_frames']] = processed_state
 
         data = torch.from_numpy(frames).to(model.device)
-        action = model.forward(data)
-        actions = np.array(action.cpu().detach().numpy())
+        action_probability = torch.nn.functional.softmax(model.forward(data).mul(model.agent_parameters['action_conf']), dim=1)
+        m = torch.distributions.Categorical(action_probability)
+        action = m.sample().item()
 
-        action = get_weighted_action(actions) % 7
-
-        for _ in range(4):
+        for _ in range(model.agent_parameters['n_repeat']):
             obs, reward, done, _ = env.step(action)
             if done:
                 break
@@ -48,7 +46,9 @@ if __name__ == "__main__":
     # Environment Setup
     env = create_mario_environment()
 
-    model_name = '07-24-2023_16-06_NN=RNNIndividual_POPSIZE=20_GEN=80_PMUTATION_0.6_PCROSSOVER_0.5'
+    model_name = '-08-04-2023_18-52_NN=CNNIndividual_POPSIZE=30_GEN=50_PMUTATION_0.33_PCROSSOVER_0.5_I=0_SCORE=1450.0'
+
+    print(env.action_space)
 
     # Create and load a Model
     model = CNN(AgentParameters.MarioCudaAgent().agent_parameters)

@@ -7,8 +7,8 @@ class MarioCudaAgent:
         self.agent_parameters["n_actions"] = 7
 
         # As the Neural Network is a Convolutional Neural Network a selected downsample size is needed
-        self.agent_parameters["downsample_w"] = 84
-        self.agent_parameters["downsample_h"] = 84
+        self.agent_parameters["downsample_w"] = 128
+        self.agent_parameters["downsample_h"] = 128
 
         # When Training the agent, how many episodes should it get?
         self.agent_parameters["n_episodes"] = 400
@@ -31,8 +31,9 @@ class MarioCudaAgent:
 
         # Hyper Parameters
         self.agent_parameters['input_size'] = 4
-        self.agent_parameters['hidden_size'] = 32
+        self.agent_parameters['hidden_size'] = 256
         self.agent_parameters['output_size'] = 7
+        self.agent_parameters['action_conf'] = 50
 
     def get_parameter(self, param_id):
         return self.agent_parameters[param_id]

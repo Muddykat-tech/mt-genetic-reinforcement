@@ -18,3 +18,4 @@ The following projects were used to help me develop this codebase:
 
 * https://github.com/robertjankowski/ga-openai-gym 
 * https://pypi.org/project/gym-super-mario-bros/
+

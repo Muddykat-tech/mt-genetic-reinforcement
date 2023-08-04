@@ -6,15 +6,18 @@ import numpy as np
 from gym import spaces
 
 
+# replace with softmax
 def get_weighted_action(action_probabilities):
     action_probabilities = action_probabilities.flatten()
     weighted_indices = []
+    random_index = 0
     for i, val in enumerate(action_probabilities):
         weight = val ** 2  # Adjust the weighting here (e.g., val ** 2, val ** 3)
         weighted_indices.extend([i] * int(weight * 100))  # Scale the weights as desired
 
-    # Randomly select an index from the weighted indices list
-    random_index = random.choice(weighted_indices)
+    if len(weighted_indices) != 0:
+        # Randomly select an index from the weighted indices list
+        random_index = random.choice(weighted_indices)
     return random_index
 
 
@@ -41,5 +44,3 @@ class ConcatObs(gym.Wrapper):
 
     def _get_ob(self):
         return np.array(self.frames)
-
-

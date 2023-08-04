@@ -48,6 +48,6 @@ class Preproc(nn.Module):
         #         value = x[i,j]
         #         value = int(value.item() * 255)
         #         newImage.putpixel((j,i),(value,value,value))
-        # newImage.save("../../../image_snapshot/snapshot" + str(now.strftime("%H-%M-%S")) + ".png", 'PNG')
+        # newImage.save("../../image_snapshot/snapshot" + str(now.strftime("%H-%M-%S")) + ".png", 'PNG')
 
         return x

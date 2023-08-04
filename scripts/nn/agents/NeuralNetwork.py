@@ -12,7 +12,7 @@ class NeuralNetwork(ABC):
         self.agent_parameters = agent_parameters
 
     @abstractmethod
-    def forward(self, raw_input: Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, raw_input: Tensor) -> torch.Tensor:
         pass
 
     @abstractmethod
