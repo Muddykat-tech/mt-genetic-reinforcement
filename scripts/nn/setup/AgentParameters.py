@@ -14,7 +14,7 @@ class MarioCudaAgent:
         self.agent_parameters["n_episodes"] = 400
 
         # How should the agent train? using the GPU?
-        self.agent_parameters["gpu"] = 0
+        self.agent_parameters["gpu"] = 1
 
         # Does the environment that the agent is running in have raw pixel rgb values as the observation?
         self.agent_parameters["use_rgb_for_raw_state"] = True

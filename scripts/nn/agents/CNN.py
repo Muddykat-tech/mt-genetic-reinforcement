@@ -17,7 +17,7 @@ class CNN(nn.Module, NeuralNetwork):
         super(CNN, self, ).__init__()
         self.fitness = 0.0
         gpu = self.agent_parameters["gpu"]
-        self.device = torch.device("cuda" if gpu >= 0 else "cpu")
+        self.device = torch.device("cuda" if gpu >= 1 else "cpu")
         self.preprocess = Preproc(self.agent_parameters)
 
         input_size = self.agent_parameters['input_size']
