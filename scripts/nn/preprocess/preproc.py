@@ -17,7 +17,7 @@ class Preproc(nn.Module):
         self.height = self.agent_params['downsample_w']
         self.width = self.agent_params['downsample_h']
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         if x.dim() > 3:
             x = x[0]
 

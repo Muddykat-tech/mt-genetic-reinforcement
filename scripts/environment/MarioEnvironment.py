@@ -46,7 +46,7 @@ if __name__ == "__main__":
     # Environment Setup
     env = create_mario_environment()
 
-    model_name = '-08-04-2023_18-52_NN=CNNIndividual_POPSIZE=30_GEN=50_PMUTATION_0.33_PCROSSOVER_0.5_I=0_SCORE=1450.0'
+    model_name = '-08-07-2023_01-39_NN=CNNIndividual_POPSIZE=100_GEN=50_PMUTATION_0.33_PCROSSOVER_0.5_I=0_SCORE=3194.0'
 
     print(env.action_space)
 

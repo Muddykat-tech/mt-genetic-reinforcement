@@ -27,7 +27,7 @@ class CNN(nn.Module, NeuralNetwork):
         self.conv1 = nn.Conv2d(in_channels=input_size, out_channels=hidden_size, kernel_size=8, stride=4).to(
             self.device)
         self.conv2 = nn.Conv2d(in_channels=hidden_size, out_channels=8, kernel_size=2, stride=2).to(self.device)
-        self.fc1 = nn.Linear(in_features=1800, out_features=hidden_size).to(self.device)
+        self.fc1 = nn.Linear(in_features=800, out_features=hidden_size).to(self.device)
         self.fc2 = nn.Linear(in_features=hidden_size, out_features=output_size).to(self.device)
 
         self.relu = nn.ReLU().to(self.device)
@@ -38,6 +38,8 @@ class CNN(nn.Module, NeuralNetwork):
         f_input = f_input.view(f_input.size(0), -1)
         fc1 = self.fc1(f_input)
         f_input = self.relu(fc1)
+
+        print(f_input.shape)
         output = self.fc2(f_input)
         return output
 

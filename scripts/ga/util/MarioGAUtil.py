@@ -1,13 +1,13 @@
 # Methods
 import copy
 import random
+from collections import deque, namedtuple
 from typing import List, Tuple
 
 import numpy as np
 
 from environment.util import LoadingLog
 from ga.components.Individuals import Individual
-from nn.setup import AgentParameters
 
 
 def crossover(parent1_weights_biases: np.array, parent2_weights_biases: np.array, p: float):
