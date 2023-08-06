@@ -125,7 +125,6 @@ class ReinforcementCNNIndividual(Individual):
         state_batch = torch.cat(batch.state)
         action_batch = torch.cat(batch.action)
         reward_batch = torch.cat(batch.reward)
-        print(state_batch.shape)
 
         state_action_values = policy_net(state_batch).gather(1, action_batch)
 

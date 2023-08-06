@@ -38,8 +38,6 @@ class CNN(nn.Module, NeuralNetwork):
         f_input = f_input.view(f_input.size(0), -1)
         fc1 = self.fc1(f_input)
         f_input = self.relu(fc1)
-
-        print(f_input.shape)
         output = self.fc2(f_input)
         return output
 
