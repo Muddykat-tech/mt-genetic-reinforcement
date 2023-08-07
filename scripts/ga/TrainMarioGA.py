@@ -11,11 +11,11 @@ env = MarioEnvironment.create_mario_environment()
 # Setup Population Settings for Genetic Algorithm Training. (Move this to a specified settings script)
 population_settings = {}
 
-population_settings['agent-reinforcement'] = [0, ReinforcementCNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
-population_settings['agent-generic'] = [100, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
+population_settings['agent-reinforcement'] = [1, ReinforcementCNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
+population_settings['agent-generic'] = [0, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
 population_settings['p_mutation'] = 0.33
 population_settings['p_crossover'] = 0.5
-population_settings['n_generations'] = 300
+population_settings['n_generations'] = 3
 population_settings['render_mode'] = 0
 
 population = Population(population_settings)

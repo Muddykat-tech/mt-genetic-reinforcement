@@ -55,7 +55,8 @@ class CNNIndividual(Individual):
         old_fitness = None
         agent_parameters = self.nn.agent_parameters
         n_episodes = agent_parameters['n_episodes']
-        frames = np.zeros(shape=(1, agent_parameters['n_frames'], agent_parameters['downsample_w'], agent_parameters['downsample_h']))
+        frames = np.zeros(
+            shape=(1, agent_parameters['n_frames'], agent_parameters['downsample_w'], agent_parameters['downsample_h']))
         deadrun = n_episodes / 2
         checkfit = int(round(n_episodes / 3))
         for episode in range(n_episodes):
@@ -66,12 +67,13 @@ class CNNIndividual(Individual):
             obs = torch.from_numpy(state.copy()).float()
 
             # Update frames
-            processed_state = self.nn.preprocess.forward(obs[episode % agent_parameters['n_frames'], ])
+            processed_state = self.nn.preprocess.forward(obs[episode % agent_parameters['n_frames'],])
             frames[0, episode % agent_parameters['n_frames']] = processed_state
             data = torch.from_numpy(frames).to(self.nn.device)
 
             # Determine the action
-            action_probability = torch.nn.functional.softmax(self.nn.forward(data).mul(agent_parameters['action_conf']), dim=1)
+            action_probability = torch.nn.functional.softmax(self.nn.forward(data).mul(agent_parameters['action_conf']),
+                                                             dim=1)
             m = torch.distributions.Categorical(action_probability)
             action = m.sample().item()
 
@@ -150,12 +152,14 @@ class ReinforcementCNNIndividual(Individual):
                 # t.max(1) will return the largest column value of each row.
                 # second column on max result is index of where max element was
                 # found, so we pick action with the larger expected reward.
-                p = policy_net(state).max(1)[1]
-                return p.view(1, 1), steps_done
+                p = policy_net(state).max(1)[1].view(1, 1)
+                return p, steps_done
         else:
-            return torch.tensor([[env.action_space.sample()]], device=self.nn.device, dtype=torch.long), steps_done
+            d = torch.tensor([[env.action_space.sample()]], device=self.nn.device, dtype=torch.long)
+            return d, steps_done
 
         # This is where actions the agent take are calculated, fitness is modified here.
+
     def run_single(self, env, logger, render=False) -> Tuple[float, np.array]:
         fitness = 0.0
         # Convert this into special agent params
@@ -168,7 +172,7 @@ class ReinforcementCNNIndividual(Individual):
         LR = 1e-4
         n_episodes = self.nn.agent_parameters['n_episodes']
 
-        policy_net = copy.deepcopy(self.nn.to(self.nn.device))
+        policy_net = self.nn
         target_net = copy.deepcopy(self.nn.to(self.nn.device))
         target_net.load_state_dict(policy_net.state_dict())
 
@@ -179,34 +183,42 @@ class ReinforcementCNNIndividual(Individual):
         agent_parameters = self.nn.agent_parameters
         episode_durations = []
 
-        state = env.reset()
-        frames = np.zeros(shape=(1, agent_parameters['n_frames'], agent_parameters['downsample_w'], agent_parameters['downsample_h']))
         for i_episode in range(n_episodes):
-            # State Witchcraft that is likely not doing things correctly.
+            # State Witchcraft that downsizes and grey-scales the image
+            state = env.reset()
+            frames = np.zeros(shape=(
+            1, agent_parameters['n_frames'], agent_parameters['downsample_w'], agent_parameters['downsample_h']))
             obs = torch.from_numpy(state.copy()).float()
-            processed_state = self.nn.preprocess.forward(obs[i_episode % agent_parameters['n_frames'], ])
+            processed_state = self.nn.preprocess.forward(obs[i_episode % agent_parameters['n_frames'],])
             frames[0, i_episode % agent_parameters['n_frames']] = processed_state
             data = torch.from_numpy(frames).to(self.nn.device)
-
             for t in count():
-                action, steps_done = self.select_action(env, EPS_END, EPS_START, policy_net, data, EPS_DECAY, steps_done)
-                observation, reward, terminated, truncated = env.step(action.item())
+                action, steps_done = self.select_action(env, EPS_END, EPS_START, policy_net, data, EPS_DECAY,
+                                                        steps_done)
+                state, reward, terminated, truncated = env.step(action.item())
+                # Update Observation
+                observation = torch.from_numpy(state.copy()).float()
+                processed_state = self.nn.preprocess.forward(observation[i_episode % agent_parameters['n_frames'],])
+                frames[0, i_episode % agent_parameters['n_frames']] = processed_state
+                data = torch.from_numpy(frames).to(self.nn.device)
+
                 reward = torch.tensor([reward], device=self.nn.device)
                 done = terminated or truncated
 
                 if terminated:
                     next_state = None
                 else:
-                    next_state = torch.tensor(observation, dtype=torch.float32, device=self.nn.device)
+                    next_state = data
 
-                memory.push(torch.from_numpy(state.copy()).to(self.nn.device), action, next_state, reward)
+                memory.push(data, action, next_state, reward)
                 state = next_state.cpu().numpy()
 
                 self.optimize_step(memory, BATCH_SIZE, fitness, policy_net, target_net, GAMMA, optimizer)
                 target_net_state_dict = target_net.state_dict()
                 policy_net_state_dict = policy_net.state_dict()
                 for key in policy_net_state_dict:
-                    target_net_state_dict[key] = policy_net_state_dict[key]*TAU + target_net_state_dict[key]*(1-TAU)
+                    target_net_state_dict[key] = policy_net_state_dict[key] * TAU + target_net_state_dict[key] * (
+                                1 - TAU)
 
                 target_net.load_state_dict(target_net_state_dict)
 
@@ -220,6 +232,7 @@ class ReinforcementCNNIndividual(Individual):
 
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
+
 
 class ReplayMemory(object):
 
