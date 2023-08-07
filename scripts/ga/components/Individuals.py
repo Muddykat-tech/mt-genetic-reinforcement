@@ -177,6 +177,7 @@ class ReinforcementCNNIndividual(Individual):
         steps_done = 0
         n_episodes = self.get('n_episodes')
         for episode in range(n_episodes):
+            logger.tick()
             state = env.reset()
             state = self.preproc(state, episode)
             for t in count():
@@ -206,7 +207,52 @@ class ReinforcementCNNIndividual(Individual):
                 if done:
                     break
 
-        return self.fitness, self.nn.get_weights_biases()
+        # Now evaluate the reinforcement agent
+        fitness = 0.0
+        frames = np.zeros(
+            shape=(1, self.get('n_frames'), self.get('downsample_w'), self.get('downsample_h')))
+        deadrun = n_episodes / 2
+        checkfit = int(round(n_episodes / 3))
+        old_fitness = fitness
+        state = env.reset()
+        for episode in range(n_episodes):
+            logger.tick()
+
+            if render:
+                env.render()
+            obs = torch.from_numpy(state.copy()).float()
+
+            # Update frames
+            processed_state = self.nn.preprocess.forward(obs[episode % self.get('n_frames'),])
+            frames[0, episode % self.get('n_frames')] = processed_state
+            data = torch.from_numpy(frames).to(self.nn.device)
+
+            # Determine the action
+            action_probability = torch.nn.functional.softmax(self.nn.forward(data).mul(self.get('action_conf')),
+                                                             dim=1)
+            m = torch.distributions.Categorical(action_probability)
+            action = m.sample().item()
+
+            # Repeat the action for a few frames
+            for _ in range(self.get('n_repeat')):
+                obs, reward, done, _ = env.step(action)
+                fitness += reward
+                if done:
+                    break
+
+            # If the fitness isn't improved much at the start, it's likely it got stuck standing still or something
+            # so just kill it then and there, this could be better checked by comparing previous results from like
+            # a few episodes ago
+            if episode > checkfit:
+                old_fitness = fitness
+
+            if episode > deadrun and fitness <= old_fitness:
+                break
+
+            if done:
+                break
+
+        return fitness, self.nn.get_weights_biases()
 
 
 Transition = namedtuple('Transition',

@@ -85,6 +85,8 @@ class Population:
 
             self.update_old_population()
 
+            torch.cuda.empty_cache()  # Hopefully this helps with the memory issues
+
             new_best_individual = self.get_best_model_parameters()
 
             if new_best_individual.fitness > best_individual.fitness:
