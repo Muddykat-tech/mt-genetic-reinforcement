@@ -15,7 +15,7 @@ class MarioCudaAgent:
 
         # How should the agent train? using the GPU?
         self.agent_parameters["gpu"] = 1
-
+        
         # Does the environment that the agent is running in have raw pixel rgb values as the observation?
         self.agent_parameters["use_rgb_for_raw_state"] = True
 
@@ -34,6 +34,15 @@ class MarioCudaAgent:
         self.agent_parameters['hidden_size'] = 256
         self.agent_parameters['output_size'] = 7
         self.agent_parameters['action_conf'] = 200
+
+        # Reinforcement Parameters
+        self.agent_parameters['memory_size'] = 10000
+        self.agent_parameters['batch_size'] = 64
+        self.agent_parameters['ep_end'] = 0.05
+        self.agent_parameters['ep_start'] = 0.9
+        self.agent_parameters['ep_decay'] = 1000
+        self.agent_parameters['gamma'] = 0.99
+        self.agent_parameters['tau'] = 0.005
 
     def get_parameter(self, param_id):
         return self.agent_parameters[param_id]
