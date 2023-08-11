@@ -12,10 +12,10 @@ env = MarioEnvironment.create_mario_environment()
 population_settings = {}
 
 population_settings['agent-reinforcement'] = [2, ReinforcementCNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
-population_settings['agent-generic'] = [28, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
+population_settings['agent-generic'] = [22, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
 population_settings['p_mutation'] = 0.33
 population_settings['p_crossover'] = 0.5
-population_settings['n_generations'] = 40
+population_settings['n_generations'] = 50
 population_settings['render_mode'] = 0
 
 population = Population(population_settings)

@@ -52,16 +52,14 @@ class CNNIndividual(Individual):
         done = False
         state = env.reset()
         fitness = 0
-        old_fitness = None
         agent_parameters = self.nn.agent_parameters
         n_episodes = agent_parameters['n_episodes']
         frames = np.zeros(
             shape=(1, agent_parameters['n_frames'], agent_parameters['downsample_w'], agent_parameters['downsample_h']))
-        deadrun = n_episodes / 2
-        checkfit = int(round(n_episodes / 3))
         for episode in range(n_episodes):
             logger.tick()
-
+            estimate = logger.get_estimate()
+            logger.print(' Agent: Generic | Approx Training Time: ' + str(estimate))
             if render:
                 env.render()
             obs = torch.from_numpy(state.copy()).float()
@@ -83,15 +81,6 @@ class CNNIndividual(Individual):
                 fitness += reward
                 if done:
                     break
-
-            # If the fitness isn't improved much at the start, it's likely it got stuck standing still or something
-            # so just kill it then and there, this could be better checked by comparing previous results from like
-            # a few episodes ago
-            if episode > checkfit:
-                old_fitness = fitness
-
-            if episode > deadrun and fitness <= old_fitness:
-                break
 
             if done:
                 break
@@ -118,7 +107,7 @@ class ReinforcementCNNIndividual(Individual):
 
     def preproc(self, state, episode) -> np.ndarray:
         obs = torch.from_numpy(state.copy()).float()
-        processed_state = self.nn.preprocess.forward(obs[episode % self.get('n_frames'), ])
+        processed_state = self.nn.preprocess.forward(obs[episode % self.get('n_frames'),])
         self.frames[0, episode % self.get('n_frames')] = processed_state
         data = torch.from_numpy(self.frames).to(self.nn.device)
         return data
@@ -175,9 +164,12 @@ class ReinforcementCNNIndividual(Individual):
     def run_single(self, env, logger, render=False) -> Tuple[float, np.array]:
         self.fitness = 0.0
         steps_done = 0
-        n_episodes = self.get('n_episodes')
+        n_episodes = round(self.get('n_episodes') / 2)
+        done = False
         for episode in range(n_episodes):
             logger.tick()
+            estimate = logger.get_estimate()
+            logger.print(' Agent: Reinforcement | Approx Training Time: ' + str(estimate))
             state = env.reset()
             state = self.preproc(state, episode)
             for t in count():
@@ -208,15 +200,13 @@ class ReinforcementCNNIndividual(Individual):
                     break
 
         # Now evaluate the reinforcement agent
-        fitness = 0.0
         frames = np.zeros(
             shape=(1, self.get('n_frames'), self.get('downsample_w'), self.get('downsample_h')))
-        deadrun = n_episodes / 2
-        checkfit = int(round(n_episodes / 3))
-        old_fitness = fitness
         state = env.reset()
         for episode in range(n_episodes):
             logger.tick()
+            estimate = logger.get_estimate()
+            logger.print(' Agent: Reinforcement | Approx Training Time: ' + str(estimate))
 
             if render:
                 env.render()
@@ -236,23 +226,14 @@ class ReinforcementCNNIndividual(Individual):
             # Repeat the action for a few frames
             for _ in range(self.get('n_repeat')):
                 obs, reward, done, _ = env.step(action)
-                fitness += reward
+                self.fitness += reward
                 if done:
                     break
-
-            # If the fitness isn't improved much at the start, it's likely it got stuck standing still or something
-            # so just kill it then and there, this could be better checked by comparing previous results from like
-            # a few episodes ago
-            if episode > checkfit:
-                old_fitness = fitness
-
-            if episode > deadrun and fitness <= old_fitness:
-                break
 
             if done:
                 break
 
-        return fitness, self.nn.get_weights_biases()
+        return self.fitness, self.nn.get_weights_biases()
 
 
 Transition = namedtuple('Transition',

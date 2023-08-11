@@ -19,18 +19,29 @@ def create_mario_environment(environment_name='SuperMarioBros-v0'):
     return environment
 
 
+def create_mario_environment_random(environment_name='SuperMarioBrosRandomStages-v0'):
+    environment = gym_super_mario_bros.make(environment_name)
+    environment = JoypadSpace(environment, SIMPLE_MOVEMENT)
+    environment = ConcatObs(env=environment, k=4)
+    return environment
+
+
 def test_mario_model(model):
     done = False
     state = env.reset()
-    frames = np.zeros(shape=(1, model.agent_parameters['n_frames'], model.agent_parameters['downsample_w'], model.agent_parameters['downsample_h']))
+    frames = np.zeros(shape=(1, model.agent_parameters['n_frames'], model.agent_parameters['downsample_w'],
+                             model.agent_parameters['downsample_h']))
     for episode in range(20000):
+        time.sleep(0.005)
         env.render()
+
         observation = torch.from_numpy(state.copy()).float()
-        processed_state = model.preprocess.forward(observation[episode % model.agent_parameters['n_frames'], ])
+        processed_state = model.preprocess.forward(observation[episode % model.agent_parameters['n_frames'],])
         frames[0, episode % model.agent_parameters['n_frames']] = processed_state
 
         data = torch.from_numpy(frames).to(model.device)
-        action_probability = torch.nn.functional.softmax(model.forward(data).mul(model.agent_parameters['action_conf']), dim=1)
+        action_probability = torch.nn.functional.softmax(model.forward(data).mul(model.agent_parameters['action_conf']),
+                                                         dim=1)
         m = torch.distributions.Categorical(action_probability)
         action = m.sample().item()
 
@@ -46,7 +57,7 @@ if __name__ == "__main__":
     # Environment Setup
     env = create_mario_environment()
 
-    model_name = '-08-08-2023_01-03_NN=CNNIndividual_POPSIZE=30_GEN=40_PMUTATION_0.33_PCROSSOVER_0.5_I=0_SCORE=1560.0'
+    model_name = '-08-11-2023_11-05_NN=CNNIndividual_POPSIZE=24_GEN=50_PMUTATION_0.33_PCROSSOVER_0.5_BATCH_SIZE=16__I=0_SCORE=3375.0'
 
     print(env.action_space)
 
@@ -54,7 +65,7 @@ if __name__ == "__main__":
     model = CNN(AgentParameters.MarioCudaAgent().agent_parameters)
     model.load('../../models/' + model_name + '.npy')
 
-    for _ in range(3):
+    for _ in range(12):
         env.reset()
         test_mario_model(model)
 

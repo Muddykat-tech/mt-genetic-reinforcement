@@ -7,11 +7,13 @@ class MarioCudaAgent:
         self.agent_parameters["n_actions"] = 7
 
         # As the Neural Network is a Convolutional Neural Network a selected downsample size is needed
+        # Changing this may require Tweaking the value of the layers in CNN.py
         self.agent_parameters["downsample_w"] = 84
         self.agent_parameters["downsample_h"] = 84
 
         # When Training the agent, how many episodes should it get?
-        self.agent_parameters["n_episodes"] = 400
+        # 750 should be enough time to pass a level and perhaps a bit of the next
+        self.agent_parameters["n_episodes"] = 750
 
         # How should the agent train? using the GPU?
         self.agent_parameters["gpu"] = 1
@@ -27,17 +29,19 @@ class MarioCudaAgent:
         # How many frames should be included in the CNN? Multiple frames are included to help the network understand
         # inertia and momentum, including more may eventually result in a more accurate network, but may slow the
         # training process.
+        # Tweaking this Value may require you to change 'input_size' as input_size is the number of channels taken in.
+        # and we use the in channels to accept multiple frames
         self.agent_parameters["n_frames"] = 4
 
         # Hyper Parameters
         self.agent_parameters['input_size'] = 4
-        self.agent_parameters['hidden_size'] = 256
+        self.agent_parameters['hidden_size'] = 32
         self.agent_parameters['output_size'] = 7
-        self.agent_parameters['action_conf'] = 200
+        self.agent_parameters['action_conf'] = 100
 
         # Reinforcement Parameters
         self.agent_parameters['memory_size'] = 1000
-        self.agent_parameters['batch_size'] = 8
+        self.agent_parameters['batch_size'] = 16
         self.agent_parameters['ep_end'] = 0.05
         self.agent_parameters['ep_start'] = 0.9
         self.agent_parameters['ep_decay'] = 1000

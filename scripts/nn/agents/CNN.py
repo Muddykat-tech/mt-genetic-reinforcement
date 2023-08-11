@@ -24,22 +24,27 @@ class CNN(nn.Module, NeuralNetwork):
         hidden_size = self.agent_parameters['hidden_size']
         output_size = self.agent_parameters['output_size']
 
+        # Based on Deep Q Learning's CNN Settings (By default hidden_size is 32
         self.conv1 = nn.Conv2d(in_channels=input_size, out_channels=hidden_size, kernel_size=8, stride=4).to(
             self.device)
-        self.conv2 = nn.Conv2d(in_channels=hidden_size, out_channels=8, kernel_size=2, stride=2).to(self.device)
-        self.fc1 = nn.Linear(in_features=800, out_features=hidden_size).to(self.device)
-        self.fc2 = nn.Linear(in_features=hidden_size, out_features=output_size).to(self.device)
+        self.conv2 = nn.Conv2d(in_channels=hidden_size, out_channels=hidden_size*2, kernel_size=4, stride=2).to(self.device)
+        self.conv3 = nn.Conv2d(in_channels=hidden_size*2, out_channels=hidden_size*2, kernel_size=3, stride=1).to(self.device)
+        self.fc1 = nn.Linear(in_features=7*7*64, out_features=512).to(self.device)
+        self.fc2 = nn.Linear(in_features=512, out_features=output_size).to(self.device)
 
         self.relu = nn.ReLU().to(self.device)
 
+    def get_fitness(self):
+        return self.fitness
+
     def forward(self, raw_input: Tensor) -> torch.Tensor:
-        f_input = self.relu(self.conv1(raw_input.float()))
-        f_input = self.relu(self.conv2(f_input))
-        f_input = f_input.view(f_input.size(0), -1)
-        fc1 = self.fc1(f_input)
-        f_input = self.relu(fc1)
-        output = self.fc2(f_input)
-        return output
+        x = self.relu(self.conv1(raw_input.float()))
+        x = self.relu(self.conv2(x))
+        x = self.relu(self.conv3(x))
+        x = x.view(x.size(0), -1)
+        x = self.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
 
     def get_weights_biases(self) -> np.array:
         parameters = self.state_dict().values()

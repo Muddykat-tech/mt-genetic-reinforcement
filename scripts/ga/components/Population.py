@@ -38,6 +38,7 @@ class Population:
         self.p_mutation = population_settings['p_mutation']
         self.n_generations = population_settings['n_generations']
         self.p_crossover = population_settings['p_crossover']
+        self.batch_size = reinforcement_agent_settings[2]['batch_size']
 
         # Setting up the logger
         self.logger = LoadingLog.PrintLoader(self.n_generations, '#')
@@ -52,8 +53,8 @@ class Population:
     def get_best_model_parameters(self) -> np.array:
         return sorted(self.new_population, key=lambda ind: ind.fitness, reverse=True)[0]
 
-    def save_model_parameters(self, output_folder, iterations, save_as_pytorch=False):
-        best_model = self.get_best_model_parameters()
+    def save_model_parameters(self, output_folder, iterations, save_as_pytorch=False, specific_model=None):
+        best_model = self.get_best_model_parameters() if specific_model is None else specific_model
         file_name = self.get_file_name(self.now()) + f'_I={iterations}_SCORE={best_model.fitness}.npy'
         output_filename = output_folder + '-' + file_name
         if save_as_pytorch:
@@ -62,12 +63,14 @@ class Population:
             np.save(output_filename, best_model.weights_biases)
 
     def get_file_name(self, date):
-        return '{}_NN={}_POPSIZE={}_GEN={}_PMUTATION_{}_PCROSSOVER_{}'.format(date,
-                                                                              self.new_population[0].__class__.__name__,
-                                                                              self.population_size,
-                                                                              self.n_generations,
-                                                                              self.p_mutation,
-                                                                              self.p_crossover)
+        return '{}_NN={}_POPSIZE={}_GEN={}_PMUTATION_{}_PCROSSOVER_{}_BATCH_SIZE={}_'.format(date,
+                                                                                             self.new_population[
+                                                                                                 0].__class__.__name__,
+                                                                                             self.population_size,
+                                                                                             self.n_generations,
+                                                                                             self.p_mutation,
+                                                                                             self.p_crossover,
+                                                                                             self.batch_size)
 
     def run(self, env, run_generation: Callable, output_folder=None):
         best_individual = sorted(self.old_population, key=lambda ind: ind.fitness, reverse=True)[0]
@@ -85,16 +88,16 @@ class Population:
 
             self.update_old_population()
 
-            torch.cuda.empty_cache()  # Hopefully this helps with the memory issues
-
             new_best_individual = self.get_best_model_parameters()
 
             if new_best_individual.fitness > best_individual.fitness:
                 best_individual = new_best_individual
 
         print('')
-        print('Saving best model with fitness: {}'.format(best_individual.fitness))
+        print('Saving best model in current pop')
         self.save_model_parameters(output_folder, 0, save_as_pytorch=False)
+        print('Saving best model of all time - with fitness: {}'.format(best_individual.fitness))
+        self.save_model_parameters(output_folder, 0, save_as_pytorch=False, specific_model=best_individual)
 
     def show_stats(self, n_gen):
         mean, min, max = statistics(self.new_population)

@@ -10,6 +10,16 @@ from torchvision import transforms
 
 class Preproc(nn.Module):
 
+    def generate_image(self, x):
+        now = datetime.datetime.now()
+        newImage = Image.new('RGB', (self.width, self.height))
+        for i in range(0,self.width):
+            for j in range (0,self.height):
+                value = x[i,j]
+                value = int(value.item() * 255)
+                newImage.putpixel((j,i),(value,value,value))
+        newImage.save("../../image_snapshot/snapshot" + str(now.strftime("%H-%M-%S")) + ".png", 'PNG')
+
     def __init__(self, agent_params):
         super(Preproc, self).__init__()
 
@@ -38,15 +48,5 @@ class Preproc(nn.Module):
         x = transform(x)
 
         x = x[0]
-
-        # Disable this code for now
-        # now = datetime.datetime.now()
-        # newImage = Image.new('RGB', (self.width, self.height))
-        # for i in range(0,self.width):
-        #     for j in range (0,self.height):
-        #         value = x[i,j]
-        #         value = int(value.item() * 255)
-        #         newImage.putpixel((j,i),(value,value,value))
-        # newImage.save("../../image_snapshot/snapshot" + str(now.strftime("%H-%M-%S")) + ".png", 'PNG')
 
         return x

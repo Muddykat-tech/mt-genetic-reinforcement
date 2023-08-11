@@ -77,3 +77,5 @@ def generation(env, old_population, new_population, p_settings, logger: LoadingL
         else:
             new_population[i] = parent1
             new_population[i + 1] = parent2
+
+    return new_population
