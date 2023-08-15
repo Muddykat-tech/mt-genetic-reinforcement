@@ -25,8 +25,7 @@ class CNN(nn.Module, NeuralNetwork):
         output_size = self.agent_parameters['output_size']
 
         # Based on Deep Q Learning's CNN Settings (By default hidden_size is 32
-        self.conv1 = nn.Conv2d(in_channels=input_size, out_channels=hidden_size, kernel_size=8, stride=4).to(
-            self.device)
+        self.conv1 = nn.Conv2d(in_channels=input_size, out_channels=hidden_size, kernel_size=8, stride=4).to(self.device)
         self.conv2 = nn.Conv2d(in_channels=hidden_size, out_channels=hidden_size*2, kernel_size=4, stride=2).to(self.device)
         self.conv3 = nn.Conv2d(in_channels=hidden_size*2, out_channels=hidden_size*2, kernel_size=3, stride=1).to(self.device)
         self.fc1 = nn.Linear(in_features=7*7*64, out_features=512).to(self.device)

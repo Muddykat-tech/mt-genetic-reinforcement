@@ -1,11 +1,14 @@
 import copy
+import gc
 from datetime import datetime
 from typing import Callable
 
 import numpy as np
 import torch
 
+import matplotlib.pyplot as plt
 from environment.util import LoadingLog
+from ga.components.Individuals import ReinforcementCNNIndividual
 from ga.util.MarioGAUtil import statistics
 
 
@@ -40,15 +43,31 @@ class Population:
         self.p_crossover = population_settings['p_crossover']
         self.batch_size = reinforcement_agent_settings[2]['batch_size']
 
-        # Setting up the logger
+        # Section for Data Logging
+
+        # Setting up the print logger
         self.logger = LoadingLog.PrintLoader(self.n_generations, '#')
         self.logger.reset()
+
+        # Setting up the structure for the output graph
+        self.generic_x_axis = []  # Generation No
+        self.generic_y_axis = []  # Fitness No
+        self.reinforcement_x_axis = []  # Generation No
+        self.reinforcement_y_axis = []  # Fitness No
 
     def set_population(self, population: list):
         self.old_population = population
 
     def update_old_population(self):
+        # Move tensors from GPU to CPU to release GPU memory
+        self.old_population = [agent.nn.to(torch.device('cpu')) for agent in self.old_population]
         self.old_population = copy.deepcopy(self.new_population)
+
+        # Release all unused GPU memory cache
+        torch.cuda.empty_cache()
+
+        # And manually Trigger the garbage collector
+        gc.collect()
 
     def get_best_model_parameters(self) -> np.array:
         return sorted(self.new_population, key=lambda ind: ind.fitness, reverse=True)[0]
@@ -79,7 +98,7 @@ class Population:
         print('Population Settings: \n' + str(self.population_settings))
         print('Training Model:')
         for i in range(self.n_generations):
-            logger.printProgress(i)
+            logger.print_progress(i)
 
             [p.calculate_fitness(env, logger, render) for p in self.old_population]
 
@@ -90,8 +109,33 @@ class Population:
 
             new_best_individual = self.get_best_model_parameters()
 
+            if type(new_best_individual) is ReinforcementCNNIndividual:
+                self.reinforcement_x_axis.append(i)
+                self.reinforcement_y_axis.append(new_best_individual.fitness)
+            else:
+                self.generic_x_axis.append(i)
+                self.generic_y_axis.append(new_best_individual.fitness)
+
             if new_best_individual.fitness > best_individual.fitness:
                 best_individual = new_best_individual
+
+        if len(self.generic_x_axis) > 1:
+            plt.plot(self.generic_x_axis, self.generic_y_axis, color='red', marker='o')
+            plt.title('Best Fitness of the Generic Agents, Population = ' + str(
+                self.population_settings['agent-reinforcement'][0]))
+            plt.xlabel('Generation')
+            plt.ylabel('Fitness')
+            plt.grid(True)
+            plt.savefig('../../graphs/Generic-' + self.get_file_name(self.now()) + '.png')
+
+        if len(self.reinforcement_x_axis) > 1:
+            plt.plot(self.reinforcement_x_axis, self.reinforcement_y_axis, color='red', marker='o')
+            plt.title('Fitness of the Reinforcement Agents Population = ' + str(
+                self.population_settings['agent-reinforcement'][0]))
+            plt.xlabel('Generation')
+            plt.ylabel('Fitness')
+            plt.grid(True)
+            plt.savefig('../../graphs/Reinforcement-' + self.get_file_name(self.now()) + '.png')
 
         print('')
         print('Saving best model in current pop')

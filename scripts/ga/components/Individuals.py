@@ -56,10 +56,13 @@ class CNNIndividual(Individual):
         n_episodes = agent_parameters['n_episodes']
         frames = np.zeros(
             shape=(1, agent_parameters['n_frames'], agent_parameters['downsample_w'], agent_parameters['downsample_h']))
+
+        self.nn.to(self.nn.device)
+
         for episode in range(n_episodes):
             logger.tick()
             estimate = logger.get_estimate()
-            logger.print(' Agent: Generic | Approx Training Time: ' + str(estimate))
+            logger.print('Agent: Generic | Approx Training Time: ' + str(estimate))
             if render:
                 env.render()
             obs = torch.from_numpy(state.copy()).float()
@@ -78,12 +81,15 @@ class CNNIndividual(Individual):
             # Repeat the action for a few frames
             for _ in range(agent_parameters['n_repeat']):
                 obs, reward, done, _ = env.step(action)
+                reward /= 15
                 fitness += reward
                 if done:
                     break
 
             if done:
                 break
+
+        self.nn.to(torch.device('cpu'))
 
         return fitness, self.nn.get_weights_biases()
 
@@ -93,6 +99,7 @@ class ReinforcementCNNIndividual(Individual):
     def __init__(self, parameters):
         super().__init__(parameters)
         self.fitness = 0.0
+        self.estimate = 'NA'
         self.replay_memory = ReplayMemory(parameters['memory_size'])
         self.target_nn = self.get_model(parameters)
         self.optimizer = optim.AdamW(self.nn.parameters(), lr=1e-4, amsgrad=True)
@@ -163,23 +170,33 @@ class ReinforcementCNNIndividual(Individual):
 
     def run_single(self, env, logger, render=False) -> Tuple[float, np.array]:
         self.fitness = 0.0
+        old_fitness = 0.0
         steps_done = 0
-        n_episodes = round(self.get('n_episodes') / 2)
-        done = False
-        for episode in range(n_episodes):
-            logger.tick()
-            estimate = logger.get_estimate()
-            logger.print(' Agent: Reinforcement | Approx Training Time: ' + str(estimate))
+        n_episodes = self.get('n_episodes') * self.get('n_frames')
+        xp_episodes = self.get('experience_episodes')
+
+        self.nn.to(self.nn.device)
+        self.target_nn.to(self.nn.device)
+        for episode in range(xp_episodes):
             state = env.reset()
             state = self.preproc(state, episode)
-            for t in count():
-                action, steps_done = self.select_action(env, state, steps_done)
-                observation, reward, terminated, truncated = env.step(action.item())
-                self.fitness += reward  # This may need to be changed?
-                reward = torch.tensor([reward])
-                done = terminated or truncated
+            old_fitness = self.fitness if old_fitness < self.fitness else old_fitness
+            self.fitness = 0.0
+            logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
 
-                if terminated:
+            for t in range(n_episodes):
+                logger.tick()
+                logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
+                if render:
+                    env.render()
+
+                action, steps_done = self.select_action(env, state, steps_done)
+                observation, reward, done, info = env.step(action.item())
+                reward /= 15
+                self.fitness += reward
+                reward = torch.tensor([reward])
+
+                if done:
                     next_state = None
                 else:
                     next_state = self.preproc(observation, t)
@@ -189,49 +206,24 @@ class ReinforcementCNNIndividual(Individual):
                 state = next_state
 
                 self.train_step()
-                target_net_state_dict = self.target_nn.state_dict()
-                policy_net_state_dict = self.nn.state_dict()
-                for key in policy_net_state_dict:
-                    target_net_state_dict[key] = policy_net_state_dict[key] * self.get('tau') + target_net_state_dict[
-                        key] * (1 - self.get('tau'))
-                    self.target_nn.load_state_dict(target_net_state_dict)
+
+                if t % self.nn.agent_parameters['target_update_freq'] == 0:
+                    target_net_state_dict = self.target_nn.state_dict()
+                    policy_net_state_dict = self.nn.state_dict()
+                    for key in policy_net_state_dict:
+                        target_net_state_dict[key] = policy_net_state_dict[key] * self.get('tau') + target_net_state_dict[
+                            key] * (1 - self.get('tau'))
+                        self.target_nn.load_state_dict(target_net_state_dict)
 
                 if done:
                     break
 
-        # Now evaluate the reinforcement agent
-        frames = np.zeros(
-            shape=(1, self.get('n_frames'), self.get('downsample_w'), self.get('downsample_h')))
-        state = env.reset()
-        for episode in range(n_episodes):
-            logger.tick()
-            estimate = logger.get_estimate()
-            logger.print(' Agent: Reinforcement | Approx Training Time: ' + str(estimate))
+            # Reset the estimate after we've finished one training cycle
+            self.estimate = str(logger.get_estimate())
 
-            if render:
-                env.render()
-            obs = torch.from_numpy(state.copy()).float()
-
-            # Update frames
-            processed_state = self.nn.preprocess.forward(obs[episode % self.get('n_frames'),])
-            frames[0, episode % self.get('n_frames')] = processed_state
-            data = torch.from_numpy(frames).to(self.nn.device)
-
-            # Determine the action
-            action_probability = torch.nn.functional.softmax(self.nn.forward(data).mul(self.get('action_conf')),
-                                                             dim=1)
-            m = torch.distributions.Categorical(action_probability)
-            action = m.sample().item()
-
-            # Repeat the action for a few frames
-            for _ in range(self.get('n_repeat')):
-                obs, reward, done, _ = env.step(action)
-                self.fitness += reward
-                if done:
-                    break
-
-            if done:
-                break
+        # Help clear GPU memory, by moving network back to the cpu once training run is complete
+        self.nn.to(torch.device('cpu'))
+        self.target_nn.to(torch.device('cpu'))
 
         return self.fitness, self.nn.get_weights_biases()
 

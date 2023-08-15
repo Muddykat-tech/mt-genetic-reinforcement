@@ -2,6 +2,8 @@ import re
 import sys
 import time
 from datetime import timedelta
+from math import floor
+
 
 class PrintLoader:
     def __init__(self, max, symbol):
@@ -22,17 +24,21 @@ class PrintLoader:
         self.print_count = 20
 
     def get_estimate(self):
-        return str(timedelta(seconds=round((time.time() - self.startTime) / (0.0001 + (self.progress / self.max)))))
+        return str(
+            timedelta(seconds=round((time.time() - self.startTime) / (0.0001 + min(1, (self.progress / self.max))))))
 
-    def printProgress(self, progress):
-        self.progress = progress
-        percent = (progress / self.max)
-        maxCharacters = int(128 * percent)
-        loadingbar = ["-"] * 128
-        for index in range(maxCharacters):
+    def get_last_progress(self):
+        return self.progress
+
+    def print_progress(self, progress):
+        self.progress = min(self.max, progress)
+        percent = (self.progress / self.max)
+        max_characters = int(116 * percent)
+        loadingbar = ["-"] * 116
+        for index in range(max_characters):
             loadingbar[index] = self.symbol
 
-        loadData = ''.join(loadingbar)
+        load_data = ''.join(loadingbar)
 
         self.elapsedTime = str(timedelta(seconds=round(time.time() - self.startTime)))
 
@@ -58,13 +64,14 @@ class PrintLoader:
                          (str(seconds) + "s") if seconds > 0 else ""
                      )  # Add seconds if the elapsed time is more than 0 seconds
 
-        self.printData = timestring + " |" + str(loadData) + "| " + str(round(percent * 100)) + "% | Generation (" + str(self.progress + 1)+" / " + str(self.max + 1) + ")"
+        self.printData = timestring + " |" + str(load_data) + "| " + str(
+            round(percent * 100)) + "% | Generation (" + str(floor(self.progress) + 1) + " / " + str(self.max + 1) + ")"
         sys.stdout.write("\r" + self.printData + " | " + self.print_string + " | ")
         sys.stdout.flush()
         if self.print_count <= 0:
             self.print_string = ''
 
     def tick(self):
-        self.printProgress(self.progress)
+        self.print_progress(self.progress)
         if self.print_count > 0:
             self.print_count -= 1
