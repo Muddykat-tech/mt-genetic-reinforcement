@@ -6,7 +6,7 @@ import torch
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 from nes_py.wrappers import JoypadSpace
 
-from environment.util.EnviromentUtil import ConcatObs, get_weighted_action
+from environment.util.EnviromentUtil import ConcatObs
 from nn.agents.CNN import CNN
 from nn.setup import AgentParameters
 
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     # Environment Setup
     env = create_mario_environment()
 
-    model_name = '-08-14-2023_21-32_NN=CNNIndividual_POPSIZE=20_GEN=50_PMUTATION_0.05_PCROSSOVER_0.5_BATCH_SIZE=16__I=0_SCORE=327.1333333333233'
+    model_name = '-08-16-2023_11-24_NN=CNNIndividual_POPSIZE=10_GEN=100_PMUTATION_0.05_PCROSSOVER_0.5_BATCH_SIZE=16__I=0_SCORE=259.2666666666607'
 
     print(env.action_space)
 

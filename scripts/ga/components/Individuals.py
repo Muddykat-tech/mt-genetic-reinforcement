@@ -40,6 +40,7 @@ class Individual(ABC):
 class CNNIndividual(Individual):
     def __init__(self, parameters):
         super().__init__(parameters)
+        self.estimate = 'NA'
 
     def get_model(self, parameters) -> CNN:
         return CNN(parameters)
@@ -56,13 +57,10 @@ class CNNIndividual(Individual):
         n_episodes = agent_parameters['n_episodes']
         frames = np.zeros(
             shape=(1, agent_parameters['n_frames'], agent_parameters['downsample_w'], agent_parameters['downsample_h']))
-
         self.nn.to(self.nn.device)
-
         for episode in range(n_episodes):
             logger.tick()
-            estimate = logger.get_estimate()
-            logger.print('Agent: Generic | Approx Training Time: ' + str(estimate))
+            logger.print('Agent: Generic | Approx Training Time: ' + self.estimate)
             if render:
                 env.render()
             obs = torch.from_numpy(state.copy()).float()
@@ -89,6 +87,7 @@ class CNNIndividual(Individual):
             if done:
                 break
 
+        self.estimate = str(logger.get_estimate())
         self.nn.to(torch.device('cpu'))
 
         return fitness, self.nn.get_weights_biases()

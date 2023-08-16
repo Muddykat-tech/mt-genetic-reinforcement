@@ -1,6 +1,7 @@
 import copy
 import gc
 from datetime import datetime
+from functools import reduce
 from typing import Callable
 
 import numpy as np
@@ -109,33 +110,21 @@ class Population:
 
             new_best_individual = self.get_best_model_parameters()
 
-            if type(new_best_individual) is ReinforcementCNNIndividual:
-                self.reinforcement_x_axis.append(i)
-                self.reinforcement_y_axis.append(new_best_individual.fitness)
-            else:
-                self.generic_x_axis.append(i)
-                self.generic_y_axis.append(new_best_individual.fitness)
+            l_avg = reduce(lambda total, agent: total + agent.fitness, self.old_population, 0) / len(self.old_population)
+
+            self.generic_x_axis.append(i)
+            self.generic_y_axis.append(l_avg)
 
             if new_best_individual.fitness > best_individual.fitness:
                 best_individual = new_best_individual
 
-        if len(self.generic_x_axis) > 1:
+        if len(self.generic_x_axis) > 0:
             plt.plot(self.generic_x_axis, self.generic_y_axis, color='red', marker='o')
-            plt.title('Best Fitness of the Generic Agents, Population = ' + str(
-                self.population_settings['agent-reinforcement'][0]))
+            plt.title('Best Fitness of the Agents, Population = ' + str(len(self.old_population)))
             plt.xlabel('Generation')
             plt.ylabel('Fitness')
             plt.grid(True)
             plt.savefig('../../graphs/Generic-' + self.get_file_name(self.now()) + '.png')
-
-        if len(self.reinforcement_x_axis) > 1:
-            plt.plot(self.reinforcement_x_axis, self.reinforcement_y_axis, color='red', marker='o')
-            plt.title('Fitness of the Reinforcement Agents Population = ' + str(
-                self.population_settings['agent-reinforcement'][0]))
-            plt.xlabel('Generation')
-            plt.ylabel('Fitness')
-            plt.grid(True)
-            plt.savefig('../../graphs/Reinforcement-' + self.get_file_name(self.now()) + '.png')
 
         print('')
         print('Saving best model in current pop')
