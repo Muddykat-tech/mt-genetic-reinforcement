@@ -35,7 +35,7 @@ agent = ReinforcementCNNIndividual(AgentParameters.MarioCudaAgent().agent_parame
 # Ignore 'generation' in the print logger, it's just the same agent running multiple times
 agent_x = []  # Timestep
 agent_y = []  # Fitness
-agent.run_single(env, logger, True, agent_x, agent_y)
+agent.run_single(env, logger, False, agent_x, agent_y)
 plt.plot(agent_x, agent_y, color='blue', marker='o')
 plt.title('Fitness of RL over time')
 plt.xlabel('time-step')
