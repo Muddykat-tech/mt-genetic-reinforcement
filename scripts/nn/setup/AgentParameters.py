@@ -13,7 +13,7 @@ class MarioCudaAgent:
 
         # When Training the agent, how many episodes should it get?
         # 750 should be enough time to pass a level and perhaps a bit of the next
-        self.agent_parameters["n_episodes"] = 500
+        self.agent_parameters["n_episodes"] = 1000
 
         # How should the agent train? using the GPU?
         self.agent_parameters["gpu"] = 1
@@ -40,9 +40,9 @@ class MarioCudaAgent:
         self.agent_parameters['action_conf'] = 100
 
         # Reinforcement Parameters
-        self.agent_parameters['experience_episodes'] = 2
-        self.agent_parameters['memory_size'] = 1000
-        self.agent_parameters['batch_size'] = 16
+        self.agent_parameters['experience_episodes'] = 100
+        self.agent_parameters['memory_size'] = 10000
+        self.agent_parameters['batch_size'] = 32
         self.agent_parameters['ep_end'] = 0.05
         self.agent_parameters['ep_start'] = 0.9
         self.agent_parameters['ep_decay'] = 1000

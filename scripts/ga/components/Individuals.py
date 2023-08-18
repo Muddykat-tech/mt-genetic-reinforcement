@@ -167,24 +167,24 @@ class ReinforcementCNNIndividual(Individual):
         torch.nn.utils.clip_grad_value_(self.nn.parameters(), 100)
         self.optimizer.step()
 
-    def run_single(self, env, logger, render=False) -> Tuple[float, np.array]:
+    def run_single(self, env, logger, render=False, agent_x=None, agent_y=None) -> Tuple[float, np.array]:
         self.fitness = 0.0
         old_fitness = 0.0
         steps_done = 0
-        n_episodes = self.get('n_episodes') * self.get('n_frames')
+        n_episodes = self.get('n_episodes')
         xp_episodes = self.get('experience_episodes')
 
         self.nn.to(self.nn.device)
         self.target_nn.to(self.nn.device)
         # Average the fitness result between '
-        for episode in range(xp_episodes): # 'Episodes'
+        for episode in range(xp_episodes):  # 'Episodes'
             state = env.reset()
             state = self.preproc(state, episode)
             old_fitness = self.fitness if old_fitness < self.fitness else old_fitness
             self.fitness = 0.0
             logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
 
-            for t in range(n_episodes): # rename to n_steps
+            for t in range(n_episodes):  # rename to n_steps
                 logger.tick()
                 logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
                 if render:
@@ -211,12 +211,18 @@ class ReinforcementCNNIndividual(Individual):
                     target_net_state_dict = self.target_nn.state_dict()
                     policy_net_state_dict = self.nn.state_dict()
                     for key in policy_net_state_dict:
-                        target_net_state_dict[key] = policy_net_state_dict[key] * self.get('tau') + target_net_state_dict[
-                            key] * (1 - self.get('tau'))
+                        target_net_state_dict[key] = policy_net_state_dict[key] * self.get('tau') + \
+                                                     target_net_state_dict[
+                                                         key] * (1 - self.get('tau'))
                         self.target_nn.load_state_dict(target_net_state_dict)
 
                 if done:
                     break
+
+            if agent_x is not None:
+                logger.print_progress(episode)
+                agent_x.append(episode)
+                agent_y.append(self.fitness)
 
             # Reset the estimate after we've finished one training cycle
             self.estimate = str(logger.get_estimate())
