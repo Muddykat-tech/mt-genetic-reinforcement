@@ -100,10 +100,10 @@ class Population:
         print('Training Model:')
         for i in range(self.n_generations):
             logger.print_progress(i)
-
             [p.calculate_fitness(env, logger, render) for p in self.old_population]
 
             self.new_population = [None for _ in range(self.population_size)]
+
             run_generation(env, self.old_population, self.new_population, self.population_settings, logger)
 
             self.update_old_population()

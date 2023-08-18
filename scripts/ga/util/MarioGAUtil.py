@@ -37,12 +37,35 @@ def ranking_selection(population: List[Individual]) -> Tuple[Individual, Individ
     return parent1, parent2
 
 
+# return the 'elite' of the population in a separate list
+def elitism(population: List[Individual]) -> List[Individual]:
+    e_percent = 0.10
+    n_elite = int(len(population) * e_percent)
+
+    population.sort(key=lambda individual: individual.fitness, reverse=True)
+
+    elite_individuals = population[:n_elite]
+
+    return elite_individuals
+
+
+def tournament_selection(population: List[Individual]) -> Tuple[Individual, Individual]:
+    # Select 5 potential parents
+    parents = random.choices(population, k=5)
+    # Get the best two of the random selection
+    parents = sorted(parents, key=lambda agent: agent.fitness, reverse=True)
+
+    # Return them
+    return parents[0], parents[1]
+
+
 def statistics(population: List[Individual]):
     population_fitness = [individual.fitness for individual in population]
     return np.mean(population_fitness), np.min(population_fitness), np.max(population_fitness)
 
 
 def generation(env, old_population, new_population, p_settings, logger: LoadingLog.PrintLoader):
+    elite_population = elitism(old_population)
     for i in range(0, len(old_population) - 1, 2):
         logger.tick()
         p_crossover = p_settings['p_crossover']
@@ -50,7 +73,11 @@ def generation(env, old_population, new_population, p_settings, logger: LoadingL
         render_mode = p_settings['render_mode']
 
         # Selection
-        parent1, parent2 = ranking_selection(old_population)
+        parent1, parent2 = tournament_selection(old_population)
+
+        print("")
+        print("Parent 1: " + str(parent1.fitness))
+        print("Parent 2: " + str(parent2.fitness))
 
         # Crossover
         child1 = copy.deepcopy(parent1)
@@ -71,14 +98,21 @@ def generation(env, old_population, new_population, p_settings, logger: LoadingL
         child2.calculate_fitness(env, logger, render_mode)
 
         # If children fitness is greater than the parents update population
-        if child1.fitness > parent1.fitness:
+        if child1.fitness + child2.fitness > parent1.fitness + parent2.fitness:
             new_population[i] = child1
-        else:
-            new_population[i] = parent1
-
-        if child2.fitness > parent2.fitness:
             new_population[i + 1] = child2
         else:
+            new_population[i] = parent1
             new_population[i + 1] = parent2
 
+    if len(elite_population) > 0:
+        print('Pre Elite: ' + str(statistics(new_population)))
+        new_population = sorted(new_population, key=lambda agent: agent.fitness, reverse=True)
+        new_population = new_population[:-len(elite_population)]
+        refined_population = new_population + elite_population
+        print('Post Elite: ' + str(statistics(refined_population)))
+        return refined_population
+
     return new_population
+
+# Changed Algorithm to match the solution proposed in https://youtu.be/ziMHaGQJuSI?si=ijzXnefsGfgVaAxx

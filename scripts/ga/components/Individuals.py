@@ -176,14 +176,15 @@ class ReinforcementCNNIndividual(Individual):
 
         self.nn.to(self.nn.device)
         self.target_nn.to(self.nn.device)
-        for episode in range(xp_episodes):
+        # Average the fitness result between '
+        for episode in range(xp_episodes): # 'Episodes'
             state = env.reset()
             state = self.preproc(state, episode)
             old_fitness = self.fitness if old_fitness < self.fitness else old_fitness
             self.fitness = 0.0
             logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
 
-            for t in range(n_episodes):
+            for t in range(n_episodes): # rename to n_steps
                 logger.tick()
                 logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
                 if render:
