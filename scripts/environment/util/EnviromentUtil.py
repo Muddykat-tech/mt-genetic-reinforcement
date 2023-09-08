@@ -3,7 +3,10 @@ from collections import deque
 
 import gym
 import numpy as np
+import torch
 from gym import spaces
+
+from nn.preprocess import preproc
 
 
 # replace with softmax
@@ -32,6 +35,9 @@ class ConcatObs(gym.Wrapper):
 
     def reset(self):
         ob = self.env.reset()
+        ob = torch.from_numpy(ob.copy()).float()
+        ob = preproc.forward(True, 84, 84, ob)
+
         for _ in range(self.k):
             self.frames.append(ob)
 
@@ -39,8 +45,10 @@ class ConcatObs(gym.Wrapper):
 
     def step(self, action):
         ob, reward, done, info = self.env.step(action)
+        ob = torch.from_numpy(ob.copy()).float()
+        ob = preproc.forward(True, 84, 84, ob)
         self.frames.append(ob)
         return self._get_ob(), reward, done, info
 
     def _get_ob(self):
-        return np.array(self.frames)
+        return torch.stack(list(self.frames)).unsqueeze(0)

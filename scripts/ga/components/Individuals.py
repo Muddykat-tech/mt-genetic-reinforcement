@@ -12,6 +12,7 @@ from torch import optim
 
 from nn.agents.CNN import CNN
 from nn.agents.NeuralNetwork import NeuralNetwork
+from nn.preprocess import preproc
 
 
 # Abstract Individual Class that has base functions the GA can call upon
@@ -55,30 +56,23 @@ class CNNIndividual(Individual):
         fitness = 0
         agent_parameters = self.nn.agent_parameters
         n_episodes = agent_parameters['n_episodes']
-        frames = np.zeros(
-            shape=(1, agent_parameters['n_frames'], agent_parameters['downsample_w'], agent_parameters['downsample_h']))
         self.nn.to(self.nn.device)
         for episode in range(n_episodes):
             logger.tick()
             logger.print('Agent: Generic | Approx Training Time: ' + self.estimate)
             if render:
                 env.render()
-            obs = torch.from_numpy(state.copy()).float()
-
-            # Update frames
-            processed_state = self.nn.preprocess.forward(obs[episode % agent_parameters['n_frames'],])
-            frames[0, episode % agent_parameters['n_frames']] = processed_state
-            data = torch.from_numpy(frames).to(self.nn.device)
+            state = state.to(self.nn.device)
 
             # Determine the action
-            action_probability = torch.nn.functional.softmax(self.nn.forward(data).mul(agent_parameters['action_conf']),
+            action_probability = torch.nn.functional.softmax(self.nn.forward(state).mul(agent_parameters['action_conf']),
                                                              dim=1)
             m = torch.distributions.Categorical(action_probability)
             action = m.sample().item()
 
             # Repeat the action for a few frames
             for _ in range(agent_parameters['n_repeat']):
-                obs, reward, done, _ = env.step(action)
+                state, reward, done, _ = env.step(action)
                 reward /= 15
                 fitness += reward
                 if done:
@@ -111,13 +105,6 @@ class ReinforcementCNNIndividual(Individual):
     def get(self, parameter):
         return self.nn.agent_parameters[parameter]
 
-    def preproc(self, state, episode) -> np.ndarray:
-        obs = torch.from_numpy(state.copy()).float()
-        processed_state = self.nn.preprocess.forward(obs[episode % self.get('n_frames'),])
-        self.frames[0, episode % self.get('n_frames')] = processed_state
-        data = torch.from_numpy(self.frames).to(self.nn.device)
-        return data
-
     def select_action(self, env, state, steps_done):
         sample = random.random()
         eps_threshold = self.get('ep_end') + (self.get('ep_start') - self.get('ep_end')) * \
@@ -128,7 +115,8 @@ class ReinforcementCNNIndividual(Individual):
                 # t.max(1) will return the largest column value of each row.
                 # second column on max result is index of where max element was
                 # found, so we pick action with the larger expected reward.
-                return self.nn(state).max(1)[1].view(1, 1), steps_done
+                processed_state = state.to(self.nn.device)
+                return self.nn(processed_state).max(1)[1].view(1, 1), steps_done
         else:
             return torch.tensor([[env.action_space.sample()]], device=self.nn.device, dtype=torch.long), steps_done
 
@@ -150,6 +138,10 @@ class ReinforcementCNNIndividual(Individual):
         action_batch = torch.cat(batch.action).to(self.nn.device)
         reward_batch = torch.cat(batch.reward).to(self.nn.device)
 
+        # Generates the first image of all states in the state buffer
+        # for t in range(32):
+        #     preproc.generate_image(84, 84, state_batch[t][0], t)
+
         state_action_values = self.nn(state_batch).gather(1, action_batch)
 
         next_state_values = torch.zeros(batch_size, device=self.nn.device)
@@ -168,6 +160,7 @@ class ReinforcementCNNIndividual(Individual):
         self.optimizer.step()
 
     def run_single(self, env, logger, render=False, agent_x=None, agent_y=None) -> Tuple[float, np.array]:
+        global next_state
         self.fitness = 0.0
         old_fitness = 0.0
         steps_done = 0
@@ -179,7 +172,6 @@ class ReinforcementCNNIndividual(Individual):
         # Average the fitness result between '
         for episode in range(xp_episodes):  # 'Episodes'
             state = env.reset()
-            state = self.preproc(state, episode)
             old_fitness = self.fitness if old_fitness < self.fitness else old_fitness
             self.fitness = 0.0
             logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
@@ -191,15 +183,17 @@ class ReinforcementCNNIndividual(Individual):
                     env.render()
 
                 action, steps_done = self.select_action(env, state, steps_done)
-                observation, reward, done, info = env.step(action.item())
-                reward /= 15
+                reward = 0
+                for _ in range(self.get('n_repeat')):
+                    next_state, tmp_reward, done, info = env.step(action.item())
+                    tmp_reward /= 15
+                    reward += tmp_reward
+
+                    if done:
+                        break
+
                 self.fitness += reward
                 reward = torch.tensor([reward])
-
-                if done:
-                    next_state = None
-                else:
-                    next_state = self.preproc(observation, t)
 
                 self.replay_memory.push(state, action, next_state, reward)
 

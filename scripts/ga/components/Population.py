@@ -120,9 +120,11 @@ class Population:
 
         if len(self.generic_x_axis) > 0:
             plt.plot(self.generic_x_axis, self.generic_y_axis, color='red', marker='o')
-            plt.title('Best Fitness of the Agents, Population = ' + str(len(self.old_population)))
+            plt.title('Fitness of Population Over Time')
             plt.xlabel('Generation')
-            plt.ylabel('Fitness')
+            plt.ylabel('Mean Fitness')
+            legend_info = f'Time Taken: {logger.get_estimate()}\nPopulation: {len(self.old_population)}'
+            plt.legend([legend_info], loc='upper left', fontsize=10)
             plt.grid(True)
             plt.savefig('../../graphs/Generic-' + self.get_file_name(self.now()) + '.png')
 

@@ -75,10 +75,6 @@ def generation(env, old_population, new_population, p_settings, logger: LoadingL
         # Selection
         parent1, parent2 = tournament_selection(old_population)
 
-        print("")
-        print("Parent 1: " + str(parent1.fitness))
-        print("Parent 2: " + str(parent2.fitness))
-
         # Crossover
         child1 = copy.deepcopy(parent1)
         child2 = copy.deepcopy(parent2)
@@ -106,11 +102,9 @@ def generation(env, old_population, new_population, p_settings, logger: LoadingL
             new_population[i + 1] = parent2
 
     if len(elite_population) > 0:
-        print('Pre Elite: ' + str(statistics(new_population)))
         new_population = sorted(new_population, key=lambda agent: agent.fitness, reverse=True)
         new_population = new_population[:-len(elite_population)]
         refined_population = new_population + elite_population
-        print('Post Elite: ' + str(statistics(refined_population)))
         return refined_population
 
     return new_population

@@ -1,0 +1,12 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\scripts",
+    "\\scripts\\ga",
+    "\\scripts\\ga\\components",
+    "\\scripts\\ga\\util",
+    "\\scripts\\nn"
+  ],
+  "SelectedNode": "\\scripts\\ga\\TrainMarioGA.py",
+  "PreviewInSolutionExplorer": false
+}
