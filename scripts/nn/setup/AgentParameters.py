@@ -1,7 +1,6 @@
 class MarioCudaAgent:
     def __init__(self):
         self.agent_parameters = {}
-        self.agent_parameters["gpu"] = True
 
         # How many buttons can the agent 'press'
         self.agent_parameters["n_actions"] = 7
@@ -40,8 +39,9 @@ class MarioCudaAgent:
         self.agent_parameters['action_conf'] = 100
 
         # Reinforcement Parameters
-        self.agent_parameters['experience_episodes'] = 500
-        self.agent_parameters['memory_size'] = 800
+        self.agent_parameters['learn_start'] = 10000
+        self.agent_parameters['experience_episodes'] = 5000
+        self.agent_parameters['memory_size'] = 100000
         self.agent_parameters['batch_size'] = 32
         self.agent_parameters['ep_end'] = 0.05
         self.agent_parameters['ep_start'] = 0.9

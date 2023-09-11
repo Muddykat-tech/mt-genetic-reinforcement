@@ -199,16 +199,19 @@ class ReinforcementCNNIndividual(Individual):
 
                 state = next_state
 
-                self.train_step()
+                if steps_done >= self.get('learn_start'):
+                    self.train_step()
 
                 if t % self.nn.agent_parameters['target_update_freq'] == 0:
-                    target_net_state_dict = self.target_nn.state_dict()
-                    policy_net_state_dict = self.nn.state_dict()
-                    for key in policy_net_state_dict:
-                        target_net_state_dict[key] = policy_net_state_dict[key] * self.get('tau') + \
-                                                     target_net_state_dict[
-                                                         key] * (1 - self.get('tau'))
-                        self.target_nn.load_state_dict(target_net_state_dict)
+                    self.target_nn.load_state_dict(self.nn.state_dict())
+
+                    # target_net_state_dict = self.target_nn.state_dict()
+                    # policy_net_state_dict = self.nn.state_dict()
+                    # for key in policy_net_state_dict:
+                    #     target_net_state_dict[key] = policy_net_state_dict[key] * self.get('tau') + \
+                    #                                  target_net_state_dict[
+                    #                                      key] * (1 - self.get('tau'))
+                    #     self.target_nn.load_state_dict(target_net_state_dict)
 
                 if done:
                     break
