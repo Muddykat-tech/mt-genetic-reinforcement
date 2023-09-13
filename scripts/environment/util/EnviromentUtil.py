@@ -47,7 +47,9 @@ class ConcatObs(gym.Wrapper):
         ob, reward, done, info = self.env.step(action)
         ob = torch.from_numpy(ob.copy()).float()
         ob = preproc.forward(True, 84, 84, ob)
-        self.frames.append(ob)
+        if random.randrange(2) == 1:
+            self.frames.append(ob)
+
         return self._get_ob(), reward, done, info
 
     def _get_ob(self):

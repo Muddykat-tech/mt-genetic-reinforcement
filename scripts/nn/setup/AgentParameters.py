@@ -23,7 +23,7 @@ class MarioCudaAgent:
         # How many times should the agent repeat a chosen action? This can help train the agent faster in some
         # scenarios, marios jump height is tied to how long the button is held, this can be achieved by NN on its
         # own, however repeating actions can help drop the complexity of understanding this.
-        self.agent_parameters["n_repeat"] = 4
+        self.agent_parameters["n_repeat"] = 8
 
         # How many frames should be included in the CNN? Multiple frames are included to help the network understand
         # inertia and momentum, including more may eventually result in a more accurate network, but may slow the
@@ -39,9 +39,9 @@ class MarioCudaAgent:
         self.agent_parameters['action_conf'] = 100
 
         # Reinforcement Parameters
-        self.agent_parameters['learn_start'] = 10000
+        self.agent_parameters['learn_start'] = 500
         self.agent_parameters['experience_episodes'] = 5000
-        self.agent_parameters['memory_size'] = 100000
+        self.agent_parameters['memory_size'] = 1000000
         self.agent_parameters['batch_size'] = 32
         self.agent_parameters['ep_end'] = 0.05
         self.agent_parameters['ep_start'] = 0.9

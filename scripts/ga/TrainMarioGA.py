@@ -11,7 +11,7 @@ from ga.components.Population import Population
 from ga.util import MarioGAUtil
 from nn.setup import AgentParameters
 
-env = MarioEnvironment.create_mario_environment()
+env = MarioEnvironment.create_mario_environment_random()
 
 # Setup Population Settings for Genetic Algorithm Training. (Move this to a specified settings script)
 population_settings = {}
