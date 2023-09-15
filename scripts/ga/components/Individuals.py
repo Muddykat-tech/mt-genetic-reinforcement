@@ -22,8 +22,8 @@ class Individual(ABC):
         self.fitness = 0.0
         self.weights_biases: np.array = None
 
-    def calculate_fitness(self, env, logger, render) -> None:
-        self.fitness, self.weights_biases = self.run_single(env, logger, render)
+    def calculate_fitness(self, env, logger, render, p) -> None:
+        self.fitness, self.weights_biases = self.run_single(env, logger, render, p)
 
     def update_model(self) -> None:
         self.nn.update_weights_biases(self.weights_biases)
@@ -33,7 +33,7 @@ class Individual(ABC):
         pass
 
     @abstractmethod
-    def run_single(self, env, logger, render=False) -> Tuple[float, np.array]:
+    def run_single(self, env, logger, render=False, p=0) -> Tuple[float, np.array]:
         pass
 
 
@@ -50,7 +50,7 @@ class CNNIndividual(Individual):
         return self.nn.agent_parameters[parameter]
 
     # This is where actions the agent take are calculated, fitness is modified here.
-    def run_single(self, env, logger, render=False) -> Tuple[float, np.array]:
+    def run_single(self, env, logger, render=False, p=0) -> Tuple[float, np.array]:
         done = False
         state = env.reset()
         fitness = 0
@@ -59,9 +59,11 @@ class CNNIndividual(Individual):
         self.nn.to(self.nn.device)
         for episode in range(n_episodes):
             logger.tick()
-            logger.print('Agent: Generic | Approx Training Time: ' + self.estimate)
+            logger.print('Generic Agent ' + str(p) + ' - Fitness: (' + str(round(fitness)) + ') - Approx Training '
+                                                                                             'Time: ' + self.estimate)
             if render:
                 env.render()
+
             state = state.to(self.nn.device)
 
             # Determine the action

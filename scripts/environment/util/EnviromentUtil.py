@@ -25,13 +25,15 @@ def get_weighted_action(action_probabilities):
 
 
 class ConcatObs(gym.Wrapper):
-    def __init__(self, env, k):
+    def __init__(self, env, k, frame_skip):
         gym.Wrapper.__init__(self, env)
         self.k = k
         self.frames = deque([], maxlen=k)
         shp = env.observation_space.shape
         self.observation_space = \
             spaces.Box(low=0, high=255, shape=((k,) + shp), dtype=env.observation_space.dtype)
+        self.frame_skip = frame_skip
+        self.frame_count = 0
 
     def reset(self):
         ob = self.env.reset()
@@ -47,7 +49,8 @@ class ConcatObs(gym.Wrapper):
         ob, reward, done, info = self.env.step(action)
         ob = torch.from_numpy(ob.copy()).float()
         ob = preproc.forward(True, 84, 84, ob)
-        if random.randrange(2) == 1:
+        self.frame_count += 1
+        if self.frame_count % self.frame_skip == 0:
             self.frames.append(ob)
 
         return self._get_ob(), reward, done, info
