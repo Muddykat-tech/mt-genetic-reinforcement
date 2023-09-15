@@ -90,8 +90,8 @@ def generation(env, old_population, new_population, p_settings, logger: LoadingL
         child1.update_model()
         child2.update_model()
 
-        child1.calculate_fitness(env, logger, render_mode)
-        child2.calculate_fitness(env, logger, render_mode)
+        child1.calculate_fitness(env, logger, render_mode, i)
+        child2.calculate_fitness(env, logger, render_mode, i+1)
 
         # If children fitness is greater than the parents update population
         if child1.fitness + child2.fitness > parent1.fitness + parent2.fitness:
