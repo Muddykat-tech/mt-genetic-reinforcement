@@ -3,6 +3,7 @@ import math
 import time
 
 import gym
+import numpy as np
 from matplotlib import pyplot as plt
 
 from environment import MarioEnvironment
@@ -17,9 +18,9 @@ env = MarioEnvironment.create_mario_environment()
 # Setup Population Settings for Genetic Algorithm Training. (Move this to a specified settings script)
 population_settings = {}
 
-population_settings['agent-reinforcement'] = [0, ReinforcementCNNIndividual,
+population_settings['agent-reinforcement'] = [2, ReinforcementCNNIndividual,
                                               AgentParameters.MarioCudaAgent().agent_parameters]
-population_settings['agent-generic'] = [200, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
+population_settings['agent-generic'] = [198, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
 population_settings['p_mutation'] = 0.05
 population_settings['p_crossover'] = 0.8
 population_settings['n_generations'] = 25
@@ -28,8 +29,8 @@ population_settings['render_mode'] = 0
 population = Population(population_settings)
 population.run(env, MarioGAUtil.generation, '../../models/')
 
-# Run an agent directly, change it's settings in Agent Parameters.MarioCudaAgent()
-# TODO make a separate param for agents
+# # Run an agent directly, change it's settings in Agent Parameters.MarioCudaAgent()
+# # TODO make a separate param for agents
 # param = AgentParameters.MarioCudaAgent().agent_parameters
 # logger = LoadingLog.PrintLoader(param.get('experience_episodes'), 'x')
 # agent = ReinforcementCNNIndividual(AgentParameters.MarioCudaAgent().agent_parameters)
@@ -45,3 +46,8 @@ population.run(env, MarioGAUtil.generation, '../../models/')
 # plt.legend([legend_info], loc='upper left', fontsize=10)
 # plt.grid(True)
 # plt.savefig('../../graphs/RL-' + str(time.time()) + '.png')
+#
+# file_name = "episodes-" + str(param.get('experience_episodes')) + "-RL-Agent-Fitness-[" + agent.fitness + "].npy"
+# output_filename = '../../models/' + '-' + file_name
+#
+# np.save(output_filename, agent.weights_biases)

@@ -67,8 +67,9 @@ class CNNIndividual(Individual):
             state = state.to(self.nn.device)
 
             # Determine the action
-            action_probability = torch.nn.functional.softmax(self.nn.forward(state).mul(agent_parameters['action_conf']),
-                                                             dim=1)
+            action_probability = torch.nn.functional.softmax(
+                self.nn.forward(state).mul(agent_parameters['action_conf']),
+                dim=1)
             m = torch.distributions.Categorical(action_probability)
             action = m.sample().item()
 
@@ -87,6 +88,7 @@ class CNNIndividual(Individual):
         self.nn.to(torch.device('cpu'))
 
         return fitness, self.nn.get_weights_biases()
+
 
 # Convolutional Neural Network Individual
 class ReinforcementCNNIndividual(Individual):

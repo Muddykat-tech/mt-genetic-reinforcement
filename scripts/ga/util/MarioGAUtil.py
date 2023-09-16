@@ -51,7 +51,7 @@ def elitism(population: List[Individual]) -> List[Individual]:
 
 def tournament_selection(population: List[Individual]) -> Tuple[Individual, Individual]:
     # Select 20 potential parents
-    parents = random.choices(population, k=20)
+    parents = random.choices(population, k=10)
     # Get the best two of the random selection
     parents = sorted(parents, key=lambda agent: agent.fitness, reverse=True)
 
