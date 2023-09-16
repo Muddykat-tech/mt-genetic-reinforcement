@@ -20,7 +20,7 @@ population_settings = {}
 
 population_settings['agent-reinforcement'] = [2, ReinforcementCNNIndividual,
                                               AgentParameters.MarioCudaAgent().agent_parameters]
-population_settings['agent-generic'] = [198, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
+population_settings['agent-generic'] = [0, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
 population_settings['p_mutation'] = 0.05
 population_settings['p_crossover'] = 0.8
 population_settings['n_generations'] = 25

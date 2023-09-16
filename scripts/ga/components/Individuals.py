@@ -167,7 +167,7 @@ class ReinforcementCNNIndividual(Individual):
         torch.nn.utils.clip_grad_value_(self.nn.parameters(), 100)
         self.optimizer.step()
 
-    def run_single(self, env, logger, render=False, agent_x=None, agent_y=None) -> Tuple[float, np.array]:
+    def run_single(self, env, logger, render=False, index=0, agent_x=None, agent_y=None) -> Tuple[float, np.array]:
         global next_state
         self.fitness = 0.0
         old_fitness = 0.0
