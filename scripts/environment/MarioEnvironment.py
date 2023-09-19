@@ -48,9 +48,9 @@ def test_mario_model(agent):
 
 if __name__ == "__main__":
     # Environment Setup
-    env = create_mario_environment()
+    env = create_mario_environment_random()
 
-    model_name = '-09-16-2023_05-37_NN=CNNIndividual_POPSIZE=200_GEN=25_PMUTATION_0.05_PCROSSOVER_0.8_BATCH_SIZE=32__I=0_SCORE=350.59999999998837'
+    model_name = '-09-19-2023_03-38_NN=CNNIndividual_POPSIZE=200_GEN=25_PMUTATION_0.05_PCROSSOVER_0.8_BATCH_SIZE=32__I=0_SCORE=307.9333333333238'
 
     print(env.action_space)
 

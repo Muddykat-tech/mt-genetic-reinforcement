@@ -39,8 +39,8 @@ class MarioCudaAgent:
         self.agent_parameters['action_conf'] = 100
 
         # Reinforcement Parameters
-        self.agent_parameters['learn_start'] = 500
-        self.agent_parameters['experience_episodes'] = 5000
+        self.agent_parameters['learn_start'] = 50
+        self.agent_parameters['experience_episodes'] = 10
         self.agent_parameters['memory_size'] = 1000000
         self.agent_parameters['batch_size'] = 32
         self.agent_parameters['ep_end'] = 0.05
