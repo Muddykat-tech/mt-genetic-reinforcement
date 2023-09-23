@@ -1,5 +1,7 @@
 import copy
 import gc
+import random
+from collections import namedtuple, deque
 from datetime import datetime
 from functools import reduce
 from typing import Callable
@@ -9,12 +11,10 @@ import torch
 
 import matplotlib.pyplot as plt
 from environment.util import LoadingLog
-from ga.components.Individuals import ReinforcementCNNIndividual
 from ga.util.MarioGAUtil import statistics
 
-
 class Population:
-    def __init__(self, population_settings):
+    def __init__(self, population_settings, replay_memory):
         self.population_settings = population_settings
         self.old_population = []
 
@@ -26,12 +26,12 @@ class Population:
         generic_agent_settings = population_settings['agent-generic']
         if generic_agent_settings is not None:
             generic_agent = generic_agent_settings[1]
-            generic_population = [generic_agent(generic_agent_settings[2]) for _ in range(generic_agent_settings[0])]
+            generic_population = [generic_agent(generic_agent_settings[2], replay_memory) for _ in range(generic_agent_settings[0])]
 
         reinforcement_agent_settings = population_settings['agent-reinforcement']
         if reinforcement_agent_settings is not None:
             reinforcement_agent = reinforcement_agent_settings[1]  # Keep agent default settings
-            reinforcement_population = [reinforcement_agent(reinforcement_agent_settings[2]) for _ in
+            reinforcement_population = [reinforcement_agent(reinforcement_agent_settings[2], replay_memory) for _ in
                                         range(reinforcement_agent_settings[0])]
 
         self.old_population = generic_population + reinforcement_population
@@ -92,7 +92,7 @@ class Population:
                                                                                              self.p_crossover,
                                                                                              self.batch_size)
 
-    def run(self, env, run_generation: Callable, output_folder=None):
+    def run(self, env, run_generation: Callable, output_folder=None, replay_memory=None):
         best_individual = sorted(self.old_population, key=lambda ind: ind.fitness, reverse=True)[0]
         logger = self.logger
         render = self.population_settings['render_mode']

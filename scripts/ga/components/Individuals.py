@@ -10,8 +10,8 @@ import numpy as np
 import torch
 from torch import optim
 
+from ga.util.ReplayMemory import Transition
 from nn.agents.CNN import CNN
-from nn.agents.NeuralNetwork import NeuralNetwork
 from nn.preprocess import preproc
 
 
@@ -39,9 +39,10 @@ class Individual(ABC):
 
 # Convolutional Neural Network Individual
 class CNNIndividual(Individual):
-    def __init__(self, parameters):
+    def __init__(self, parameters, replay_memory):
         super().__init__(parameters)
         self.estimate = 'NA'
+        self.replay_memory = replay_memory
 
     def get_model(self, parameters) -> CNN:
         return CNN(parameters)
@@ -51,6 +52,7 @@ class CNNIndividual(Individual):
 
     # This is where actions the agent take are calculated, fitness is modified here.
     def run_single(self, env, logger, render=False, p=0) -> Tuple[float, np.array]:
+        global next_state
         done = False
         state = env.reset()
         fitness = 0
@@ -74,13 +76,23 @@ class CNNIndividual(Individual):
             action = m.sample().item()
 
             # Repeat the action for a few frames
+            reward = 0
             for _ in range(agent_parameters['n_repeat']):
-                state, reward, done, _ = env.step(action)
-                reward /= 15
-                fitness += reward
+                next_state, tmp_reward, done, _ = env.step(action)
+                tmp_reward /= 15
+                reward += tmp_reward
+
                 if done:
                     break
 
+            fitness += reward
+
+            # Format the generic agent data to ensure it's compatible with Reinforcement Agents' memory
+            reward = torch.tensor([reward])
+            action = torch.tensor([[action]], device=self.nn.device, dtype=torch.long)
+            self.replay_memory.push(state, action, next_state, reward)
+
+            state = next_state
             if done:
                 break
 
@@ -92,12 +104,12 @@ class CNNIndividual(Individual):
 
 # Convolutional Neural Network Individual
 class ReinforcementCNNIndividual(Individual):
-    def __init__(self, parameters):
+    def __init__(self, parameters, memory):
         super().__init__(parameters)
         self.temp = True
         self.fitness = 0.0
         self.estimate = 'NA'
-        self.replay_memory = ReplayMemory(parameters['memory_size'])
+        self.replay_memory = memory
         self.target_nn = self.get_model(parameters)
         self.optimizer = optim.AdamW(self.nn.parameters(), lr=1e-4, amsgrad=True)
         self.frames = np.zeros(
@@ -237,23 +249,3 @@ class ReinforcementCNNIndividual(Individual):
         self.target_nn.to(torch.device('cpu'))
 
         return self.fitness, self.nn.get_weights_biases()
-
-
-Transition = namedtuple('Transition',
-                        ('state', 'action', 'next_state', 'reward'))
-
-
-class ReplayMemory(object):
-
-    def __init__(self, capacity):
-        self.memory = deque([], maxlen=capacity)
-
-    def push(self, *args):
-        """Save a transition"""
-        self.memory.append(Transition(*args))
-
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
-
-    def __len__(self):
-        return len(self.memory)

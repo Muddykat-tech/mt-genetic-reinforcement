@@ -91,7 +91,7 @@ def generation(env, old_population, new_population, p_settings, logger: LoadingL
         child2.update_model()
 
         child1.calculate_fitness(env, logger, render_mode, i)
-        child2.calculate_fitness(env, logger, render_mode, i+1)
+        child2.calculate_fitness(env, logger, render_mode, i + 1)
 
         # If children fitness is greater than the parents update population
         if child1.fitness + child2.fitness > parent1.fitness + parent2.fitness:
@@ -108,5 +108,6 @@ def generation(env, old_population, new_population, p_settings, logger: LoadingL
         return refined_population
 
     return new_population
+
 
 # Changed Algorithm to match the solution proposed in https://youtu.be/ziMHaGQJuSI?si=ijzXnefsGfgVaAxx
