@@ -154,13 +154,13 @@ class ReinforcementCNNIndividual(Individual):
         action_batch = torch.cat(batch.action).to(self.nn.device)
         reward_batch = torch.cat(batch.reward).to(self.nn.device)
 
-        # Generates the first image of all states in the state buffer
-        if self.temp:
-            preproc.generate_image(84, 84, state_batch[0][0], 0)
-            preproc.generate_image(84, 84, state_batch[0][1], 1)
-            preproc.generate_image(84, 84, state_batch[0][2], 2)
-            preproc.generate_image(84, 84, state_batch[0][3], 3)
-            self.temp = False
+        # # Generates the first image of all states in the state buffer
+        # if self.temp:
+        #     preproc.generate_image(84, 84, state_batch[0][0], 0)
+        #     preproc.generate_image(84, 84, state_batch[0][1], 1)
+        #     preproc.generate_image(84, 84, state_batch[0][2], 2)
+        #     preproc.generate_image(84, 84, state_batch[0][3], 3)
+        #     self.temp = False
 
         state_action_values = self.nn(state_batch).gather(1, action_batch)
 
