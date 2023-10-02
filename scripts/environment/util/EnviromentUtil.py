@@ -33,27 +33,33 @@ class ConcatObs(gym.Wrapper):
         self.observation_space = \
             spaces.Box(low=0, high=255, shape=((k,) + shp), dtype=env.observation_space.dtype)
         self.frame_skip = frame_skip
-        self.frame_count = 0
 
     def reset(self):
         ob = self.env.reset()
+        ob, _, _, self.info = self.env.step(0)
         ob = torch.from_numpy(ob.copy()).float()
         ob = preproc.forward(True, 84, 84, ob)
 
         for _ in range(self.k):
             self.frames.append(ob)
 
-        return self._get_ob()
+        return self._get_ob(), self.info
 
     def step(self, action):
-        ob, reward, done, info = self.env.step(action)
+
+        reward = 0
+        for _ in range(self.frame_skip):
+            ob, tmp_reward, done, self.info = self.env.step(action)
+            reward += tmp_reward
+
+            if done:
+                break
+
         ob = torch.from_numpy(ob.copy()).float()
         ob = preproc.forward(True, 84, 84, ob)
-        self.frame_count += 1
-        if self.frame_count % self.frame_skip == 0:
-            self.frames.append(ob)
+        self.frames.append(ob)
 
-        return self._get_ob(), reward, done, info
+        return self._get_ob(), reward, done, self.info
 
     def _get_ob(self):
         return torch.stack(list(self.frames)).unsqueeze(0)
