@@ -11,7 +11,10 @@ import torch
 
 import matplotlib.pyplot as plt
 from environment.util import LoadingLog
+from ga.components.Individuals import CNNIndividual
 from ga.util.MarioGAUtil import statistics
+from nn.setup import AgentParameters
+
 
 class Population:
     def __init__(self, population_settings, replay_memory):
@@ -21,12 +24,14 @@ class Population:
         # Initialize temp population variables
         generic_population = []
         reinforcement_population = []
+        seed_population = []
 
         # Setup all instances of a generic agent
         generic_agent_settings = population_settings['agent-generic']
         if generic_agent_settings is not None:
             generic_agent = generic_agent_settings[1]
-            generic_population = [generic_agent(generic_agent_settings[2], replay_memory) for _ in range(generic_agent_settings[0])]
+            generic_population = [generic_agent(generic_agent_settings[2], replay_memory) for _ in
+                                  range(generic_agent_settings[0])]
 
         reinforcement_agent_settings = population_settings['agent-reinforcement']
         if reinforcement_agent_settings is not None:
@@ -34,7 +39,14 @@ class Population:
             reinforcement_population = [reinforcement_agent(reinforcement_agent_settings[2], replay_memory) for _ in
                                         range(reinforcement_agent_settings[0])]
 
-        self.old_population = generic_population + reinforcement_population
+        seed_agent_names = population_settings['seed-agents']
+        if seed_agent_names is not None:
+            for name in seed_agent_names:
+                model = CNNIndividual(AgentParameters.MarioCudaAgent().agent_parameters, None)
+                model.nn.load('../../models/seed_agents/' + name + '.npy')
+                seed_population.append(model)
+
+        self.old_population = generic_population + reinforcement_population + seed_population
         self.population_size = len(self.old_population)
         self.new_population = []
 
@@ -110,7 +122,8 @@ class Population:
 
             new_best_individual = self.get_best_model_parameters()
 
-            l_avg = reduce(lambda total, agent: total + agent.fitness, self.old_population, 0) / len(self.old_population)
+            l_avg = reduce(lambda total, agent: total + agent.fitness, self.old_population, 0) / len(
+                self.old_population)
 
             self.generic_x_axis.append(i)
             self.generic_y_axis.append(l_avg)

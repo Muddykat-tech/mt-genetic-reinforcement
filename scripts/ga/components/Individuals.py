@@ -85,7 +85,9 @@ class CNNIndividual(Individual):
             # Format the generic agent data to ensure it's compatible with Reinforcement Agents' memory
             reward = torch.tensor([reward])
             action = torch.tensor([[action]], device=self.nn.device, dtype=torch.long)
-            self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
+
+            if self.replay_memory is not None:
+                self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
 
             state = next_state
             if done:
