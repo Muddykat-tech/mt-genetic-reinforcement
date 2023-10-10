@@ -12,7 +12,7 @@ from nn.setup import AgentParameters
 
 
 # Functions
-def create_mario_environment(environment_name='SuperMarioBros-1-1-v0'):
+def create_mario_environment(environment_name='SuperMarioBros-4-1-v0'):
     environment = gym_super_mario_bros.make(environment_name)
     environment = JoypadSpace(environment, COMPLEX_MOVEMENT)
     environment = ConcatObs(env=environment, k=4, frame_skip=8)
@@ -20,9 +20,9 @@ def create_mario_environment(environment_name='SuperMarioBros-1-1-v0'):
 
 
 def create_mario_environment_random(environment_name='SuperMarioBrosRandomStages-v0'):
-    environment = gym_super_mario_bros.make(environment_name)
-    environment = JoypadSpace(environment, SIMPLE_MOVEMENT)
-    environment = ConcatObs(env=environment, k=4, frame_skip=4)
+    environment = gym_super_mario_bros.make(environment_name, stages=['1-1', '2-1', '3-1', '4-1'])
+    environment = JoypadSpace(environment, COMPLEX_MOVEMENT)
+    environment = ConcatObs(env=environment, k=4, frame_skip=8)
     return environment
 
 
@@ -33,8 +33,9 @@ def test_mario_model(agent):
         time.sleep(0.005)
         env.render()
         state = state.to(agent.device)
-        action_probability = torch.nn.functional.softmax(agent.forward(state).mul(agent.agent_parameters['action_conf']),
-                                                         dim=1)
+        action_probability = torch.nn.functional.softmax(
+            agent.forward(state).mul(agent.agent_parameters['action_conf']),
+            dim=1)
         m = torch.distributions.Categorical(action_probability)
         action = m.sample().item()
 

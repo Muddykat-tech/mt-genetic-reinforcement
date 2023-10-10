@@ -30,33 +30,33 @@ population_settings['render_mode'] = 0
 param = AgentParameters.MarioCudaAgent()
 replay_memory = ReplayMemory(param.agent_parameters['memory_size'])
 
-#population = Population(population_settings, replay_memory)
-#population.run(env, MarioGAUtil.generation, '../../models/')
+population = Population(population_settings, replay_memory)
+population.run(env, MarioGAUtil.generation, '../../models/')
 
 # Run an agent directly, change it's settings in Agent Parameters.MarioCudaAgent()
 # TODO make a separate param for agents
 param = AgentParameters.MarioCudaAgent().agent_parameters
 logger = LoadingLog.PrintLoader(param.get('experience_episodes'), 'x')
-agent = ReinforcementCNNIndividual(AgentParameters.MarioCudaAgent().agent_parameters, replay_memory)
+agent = CNNIndividual(AgentParameters.MarioCudaAgent().agent_parameters, replay_memory)
 # Ignore 'generation' in the print logger, it's just the same agent running multiple times
 agent_x = []  # Timestep
 agent_y = []  # Fitness
 
-#model_name = 'RL_agent_09302023_08_34_08_2200000'
-#agent.nn.load('models/' + model_name + '.npy')
+model_name = 'MERGED-10-09-2023_17-53_NN=CNNIndividual_POPSIZE=32_GEN=25_PMUTATION_0.05_PCROSSOVER_0.8_BATCH_SIZE=32__I=0_SCORE=35.49999999999995'
+agent.nn.load('../models/' + model_name + '.npy')
 
 agent.run_single(env, logger, render=True, agent_x=agent_x, agent_y=agent_y)
 
 plt.plot(agent_x, agent_y, color='blue', marker='o')
-plt.title('Fitness of RL Agent Over Time')
+plt.title('Fitness of Merged Agent in 3-1')
 plt.xlabel('Episode')
 plt.ylabel('Fitness')
 legend_info = f'Time Taken: {logger.get_estimate()}'
 plt.legend([legend_info], loc='upper left', fontsize=10)
 plt.grid(True)
-plt.savefig('../../graphs/RL-' + str(time.time()) + '.png')
-
-file_name = "episodes-" + str(param.get('experience_episodes')) + "-RL-Agent-Fitness-[" + agent.fitness + "].npy"
-output_filename = '../../models/' + '-' + file_name
-
-np.save(output_filename, agent.weights_biases)
+plt.savefig('../graphs/Merged-' + str(time.time()) + '.png')
+#
+# file_name = "episodes-" + str(param.get('experience_episodes')) + "-Agent-Fitness-[" + str(agent.fitness) + "].npy"
+# output_filename = '../models/' + '-' + file_name
+#
+# np.save(output_filename, agent.weights_biases)

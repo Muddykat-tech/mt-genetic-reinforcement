@@ -53,7 +53,7 @@ class CNNIndividual(Individual):
         return self.nn.agent_parameters[parameter]
 
     # This is where actions the agent take are calculated, fitness is modified here.
-    def run_single(self, env, logger, render=False, p=0) -> Tuple[float, np.array]:
+    def run_single(self, env, logger, render=False, agent_x=None, agent_y=None, p=0) -> Tuple[float, np.array]:
         global next_state
         done = False
         state, old_info = env.reset()
@@ -77,9 +77,11 @@ class CNNIndividual(Individual):
             m = torch.distributions.Categorical(action_probability)
             action = m.sample().item()
             next_state, reward, done, info = env.step(action)
-            reward = min(agent_parameters['reward_max_x_change'], max(-agent_parameters['reward_max_x_change'], info['x_pos'] - old_info['x_pos'])) # Clip the x_pos difference to deal with warp points, etc.
+            reward = min(agent_parameters['reward_max_x_change'], max(-agent_parameters['reward_max_x_change'],
+                                                                      info['x_pos'] - old_info[
+                                                                          'x_pos']))  # Clip the x_pos difference to deal with warp points, etc.
             old_info = info
-            reward /= 100 # 15
+            reward /= 100  # 15
             fitness += reward
 
             # Format the generic agent data to ensure it's compatible with Reinforcement Agents' memory
@@ -88,6 +90,10 @@ class CNNIndividual(Individual):
 
             if self.replay_memory is not None:
                 self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
+            #
+            # if agent_x is not None:
+            #     agent_x.append(episode)
+            #     agent_y.append(fitness)
 
             state = next_state
             if done:
@@ -124,10 +130,11 @@ class ReinforcementCNNIndividual(Individual):
     def select_action(self, env, state, steps_done):
 
         sample = random.random()
-        
+
         eps_threshold = self.get('ep_end') + np.maximum(0, (self.get('ep_start') - self.get('ep_end')) * \
-                        (self.get('ep_decay') - np.maximum(0, steps_done - self.get('learn_start'))) / self.get('ep_decay'))
-        
+                                                        (self.get('ep_decay') - np.maximum(0, steps_done - self.get(
+                                                            'learn_start'))) / self.get('ep_decay'))
+
         # Early in training it's a bit inefficient to do a forward pass if eps_threshold isn't exceeded,
         # but it's useful to see the Q-value output for debugging purposes.
         with torch.no_grad():
@@ -211,19 +218,21 @@ class ReinforcementCNNIndividual(Individual):
             state, old_info = env.reset()
             old_fitness = self.fitness if old_fitness < self.fitness else old_fitness
             self.fitness = 0.0
-            #logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
+            # logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
 
             for t in range(n_episodes):  # rename to n_steps
-                #logger.tick()
-                #logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
+                # logger.tick()
+                # logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
                 if render:
                     env.render()
 
                 action, steps_done = self.select_action(env, state, steps_done)
                 next_state, reward, done, info = env.step(action)
-                reward = min(self.get('reward_max_x_change'), max(-self.get('reward_max_x_change'), info['x_pos'] - old_info['x_pos'])) # Clip the x_pos difference to deal with warp points, etc.
+                reward = min(self.get('reward_max_x_change'), max(-self.get('reward_max_x_change'),
+                                                                  info['x_pos'] - old_info[
+                                                                      'x_pos']))  # Clip the x_pos difference to deal with warp points, etc.
                 old_info = info
-                reward /= 100 # 15
+                reward /= 100  # 15
 
                 self.fitness += reward
                 reward = torch.tensor([reward])
@@ -242,7 +251,8 @@ class ReinforcementCNNIndividual(Individual):
                     if self.get('q_val_plot_freq') > 0:
                         self.q_values_plot.save_image(self.get('log_dir') + '/graphs/')
                     self.fitness_plot.save_image(self.get('log_dir') + '/graphs/')
-                    output_filename = self.get('log_dir') + '/models/RL_agent_' + datetime.now().strftime("%m%d%Y_%H_%M_%S") + '_' + str(steps_done) + '.npy'
+                    output_filename = self.get('log_dir') + '/models/RL_agent_' + datetime.now().strftime(
+                        "%m%d%Y_%H_%M_%S") + '_' + str(steps_done) + '.npy'
                     np.save(output_filename, self.nn.get_weights_biases())
 
                     # target_net_state_dict = self.target_nn.state_dict()
@@ -256,7 +266,8 @@ class ReinforcementCNNIndividual(Individual):
                 if done:
                     break
 
-            print("Steps: " + str(steps_done) + ", fitness: " + str(self.fitness) + ', got flag: ' + str(info['flag_get']))
+            print("Steps: " + str(steps_done) + ", fitness: " + str(self.fitness) + ', got flag: ' + str(
+                info['flag_get']))
 
             # Plot smoothed running average of fitness
             moving_fitness = moving_fitness_mom * moving_fitness + (1.0 - moving_fitness_mom) * self.fitness
@@ -264,9 +275,9 @@ class ReinforcementCNNIndividual(Individual):
             zero_debiased_moving_fitness = moving_fitness / (1.0 - moving_fitness_mom ** moving_fitness_updates)
             self.fitness_plot.add_data_point("fitness", steps_done, [zero_debiased_moving_fitness], False, True)
             self.fitness_plot.update_image('')
-            
+
             if agent_x is not None:
-                #logger.print_progress(episode)
+                # logger.print_progress(episode)
                 agent_x.append(episode)
                 agent_y.append(self.fitness)
 
