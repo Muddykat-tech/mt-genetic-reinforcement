@@ -1,5 +1,6 @@
 import copy
 import math
+import sys
 import time
 
 import gym
@@ -14,49 +15,44 @@ from ga.util import MarioGAUtil
 from ga.util.ReplayMemory import ReplayMemory
 from nn.setup import AgentParameters
 
-env = MarioEnvironment.create_mario_environment()
+levels = ["SuperMarioBros-1-1-v0", "SuperMarioBros-2-1-v0", "SuperMarioBros-3-1-v0", "SuperMarioBros-4-1-v0"]
 
-# Setup Population Settings for Genetic Algorithm Training. (Move this to a specified settings script)
-population_settings = {}
-
-population_settings['agent-reinforcement'] = [2, ReinforcementCNNIndividual,
-                                              AgentParameters.MarioCudaAgent().agent_parameters]
-population_settings['agent-generic'] = [2, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
-population_settings['p_mutation'] = 0.05
-population_settings['p_crossover'] = 0.8
-population_settings['n_generations'] = 25
-population_settings['render_mode'] = 0
-
-param = AgentParameters.MarioCudaAgent()
-replay_memory = ReplayMemory(param.agent_parameters['memory_size'])
-
-population = Population(population_settings, replay_memory)
-population.run(env, MarioGAUtil.generation, '../../models/')
-
-# Run an agent directly, change it's settings in Agent Parameters.MarioCudaAgent()
-# TODO make a separate param for agents
 param = AgentParameters.MarioCudaAgent().agent_parameters
+replay_memory = ReplayMemory(param['memory_size'])
 logger = LoadingLog.PrintLoader(param.get('experience_episodes'), 'x')
 agent = CNNIndividual(AgentParameters.MarioCudaAgent().agent_parameters, replay_memory)
 # Ignore 'generation' in the print logger, it's just the same agent running multiple times
-agent_x = []  # Timestep
-agent_y = []  # Fitness
+agent_x = []  # Level
+agent_y = []  # Average Fitness
 
-model_name = 'MERGED-10-09-2023_17-53_NN=CNNIndividual_POPSIZE=32_GEN=25_PMUTATION_0.05_PCROSSOVER_0.8_BATCH_SIZE=32__I=0_SCORE=35.49999999999995'
+model_name = '-10-13-2023_16-24_NN=CNNIndividual_POPSIZE=28_GEN=5_PMUTATION_0.05_PCROSSOVER_0.8_BATCH_SIZE=32__I=0_SCORE=31.52999999999997'
 agent.nn.load('../models/' + model_name + '.npy')
 
-agent.run_single(env, logger, render=True, agent_x=agent_x, agent_y=agent_y)
+for i in range(4):
+    level = levels[i]
+    env = MarioEnvironment.create_mario_environment(level)
+    agent_fitness = 0
 
-plt.plot(agent_x, agent_y, color='blue', marker='o')
-plt.title('Fitness of Merged Agent in 3-1')
-plt.xlabel('Episode')
-plt.ylabel('Fitness')
-legend_info = f'Time Taken: {logger.get_estimate()}'
-plt.legend([legend_info], loc='upper left', fontsize=10)
-plt.grid(True)
-plt.savefig('../graphs/Merged-' + str(time.time()) + '.png')
-#
-# file_name = "episodes-" + str(param.get('experience_episodes')) + "-Agent-Fitness-[" + str(agent.fitness) + "].npy"
-# output_filename = '../models/' + '-' + file_name
-#
-# np.save(output_filename, agent.weights_biases)
+    for x in range(100):
+        fitness, _ = agent.run_single(env, None, render=False)
+        agent_fitness += fitness
+
+    average_fitness = agent_fitness / 100
+    agent_x.append(i)
+    agent_y.append(average_fitness)
+    print(" level " + level + " is " + str(average_fitness))
+    env.close()
+
+level_names = ['World 1-1', 'World 2-1', 'World 3-1', 'World 4-1']
+plt.figure(figsize=(10, 6))  # Optional: Set the figure size
+
+plt.bar(agent_x, agent_y, color='skyblue')
+plt.xlabel('Level')  # X-axis label
+plt.ylabel('Average Fitness')  # Y-axis label
+plt.title('Average World Progression for Merge Agent trained 1h')
+plt.xticks(range(len(agent_x)), level_names, rotation=45)
+plt.axhline(25, color='red', linestyle='--', label=f'Level Flag')
+plt.legend()
+plt.tight_layout()  # Optional: Ensure the labels fit within the plot area
+
+plt.show()

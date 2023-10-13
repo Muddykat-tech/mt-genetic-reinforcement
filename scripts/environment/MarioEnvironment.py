@@ -12,7 +12,7 @@ from nn.setup import AgentParameters
 
 
 # Functions
-def create_mario_environment(environment_name='SuperMarioBros-4-1-v0'):
+def create_mario_environment(environment_name='SuperMarioBros-1-1-v0'):
     environment = gym_super_mario_bros.make(environment_name)
     environment = JoypadSpace(environment, COMPLEX_MOVEMENT)
     environment = ConcatObs(env=environment, k=4, frame_skip=8)

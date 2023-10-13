@@ -1,6 +1,7 @@
 import copy
 import math
 import random
+import sys
 from abc import ABC, abstractmethod
 from collections import namedtuple, deque
 from itertools import count
@@ -25,7 +26,7 @@ class Individual(ABC):
         self.weights_biases: np.array = None
 
     def calculate_fitness(self, env, logger, render, p) -> None:
-        self.fitness, self.weights_biases = self.run_single(env, logger, render, p)
+        self.fitness, self.weights_biases = self.run_single(env, logger, render, p=p)
 
     def update_model(self) -> None:
         self.nn.update_weights_biases(self.weights_biases)
@@ -54,6 +55,7 @@ class CNNIndividual(Individual):
 
     # This is where actions the agent take are calculated, fitness is modified here.
     def run_single(self, env, logger, render=False, agent_x=None, agent_y=None, p=0) -> Tuple[float, np.array]:
+        loading_progress = ['▁','▁','▃','▃','▄','▄','▅','▅','▆','▆','▇','▇','█','█','▇','▇','▆','▆','▅','▅','▄','▄','▃','▃','▁','▁']
         global next_state
         done = False
         state, old_info = env.reset()
@@ -62,9 +64,14 @@ class CNNIndividual(Individual):
         n_episodes = agent_parameters['n_episodes']
         self.nn.to(self.nn.device)
         for episode in range(n_episodes):
-            logger.tick()
-            logger.print('Generic Agent ' + str(p) + ' - Fitness: (' + str(round(fitness)) + ') - Approx Training '
-                                                                                             'Time: ' + self.estimate)
+            if logger is not None:
+                logger.tick()
+                logger.print('Generic Agent ' + str(p) + ' - Fitness: (' + str(round(fitness)) + ') - Approx Training '
+                                                                                                 'Time: ' + self.estimate)
+            else:
+                sys.stdout.write("\r | " + loading_progress[episode % len(loading_progress)] + " Calculating Fitness | ")
+                sys.stdout.flush()
+
             if render:
                 env.render()
 
@@ -90,17 +97,20 @@ class CNNIndividual(Individual):
 
             if self.replay_memory is not None:
                 self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
-            #
-            # if agent_x is not None:
-            #     agent_x.append(episode)
-            #     agent_y.append(fitness)
+
+            if isinstance(agent_x, list):
+                agent_x.append(episode)
+                agent_y.append(fitness)
 
             state = next_state
             if done:
                 break
 
-        self.estimate = str(logger.get_estimate())
+        if logger is not None:
+            self.estimate = str(logger.get_estimate())
+
         self.nn.to(torch.device('cpu'))
+        self.fitness = fitness
 
         return fitness, self.nn.get_weights_biases()
 

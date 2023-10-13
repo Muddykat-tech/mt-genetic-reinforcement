@@ -21,11 +21,11 @@ population_settings = {}
 
 population_settings['agent-reinforcement'] = [0, ReinforcementCNNIndividual,
                                               AgentParameters.MarioCudaAgent().agent_parameters]
-population_settings['agent-generic'] = [98, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
-population_settings['seed-agents'] = ["Mario_1_1_6225000", "Mario_2_1_9925000", "Mario_3_1_10000000", "Mario_4_1_9950000"]
+population_settings['agent-generic'] = [24, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
+population_settings['seed-agents'] = ["Mario_1_1_9950000", "Mario_2_1_9925000", "Mario_3_1_10000000", "Mario_4_1_9950000"]
 population_settings['p_mutation'] = 0.05
 population_settings['p_crossover'] = 0.8
-population_settings['n_generations'] = 50
+population_settings['n_generations'] = 5
 population_settings['render_mode'] = 0
 
 param = AgentParameters.MarioCudaAgent()
@@ -33,4 +33,3 @@ replay_memory = ReplayMemory(param.agent_parameters['memory_size'])
 
 population = Population(population_settings, replay_memory)
 population.run(env, MarioGAUtil.generation, '../../models/')
-
