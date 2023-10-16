@@ -39,7 +39,7 @@ class MarioCudaAgent:
         self.agent_parameters['input_size'] = 4
         self.agent_parameters['hidden_size'] = 32
         self.agent_parameters['output_size'] = 12  # 7 for simple movement, 12 for complex movement
-        self.agent_parameters['action_conf'] = 20
+        self.agent_parameters['action_conf'] = 10
 
         # Reinforcement Parameters
         self.agent_parameters['learn_start'] = 10000  # 50

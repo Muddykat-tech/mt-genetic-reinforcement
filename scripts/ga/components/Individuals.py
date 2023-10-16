@@ -2,6 +2,7 @@ import copy
 import math
 import random
 import sys
+import time
 from abc import ABC, abstractmethod
 from collections import namedtuple, deque
 from itertools import count
@@ -11,6 +12,7 @@ import numpy as np
 import torch
 from torch import optim
 
+from environment import MarioEnvironment
 from ga.util.ReplayMemory import Transition
 from nn.agents.CNN import CNN
 from nn.preprocess import preproc
@@ -25,8 +27,8 @@ class Individual(ABC):
         self.fitness = 0.0
         self.weights_biases: np.array = None
 
-    def calculate_fitness(self, env, logger, render, p) -> None:
-        self.fitness, self.weights_biases = self.run_single(env, logger, render, p=p)
+    def calculate_fitness(self, levels, logger, render, p) -> None:
+        self.fitness, self.weights_biases = self.run_single(levels, logger, render, p=p)
 
     def update_model(self) -> None:
         self.nn.update_weights_biases(self.weights_biases)
@@ -36,7 +38,7 @@ class Individual(ABC):
         pass
 
     @abstractmethod
-    def run_single(self, env, logger, render=False, p=0) -> Tuple[float, np.array]:
+    def run_single(self, levels, logger, render=False, p=0) -> Tuple[float, np.array]:
         pass
 
 
@@ -54,63 +56,71 @@ class CNNIndividual(Individual):
         return self.nn.agent_parameters[parameter]
 
     # This is where actions the agent take are calculated, fitness is modified here.
-    def run_single(self, env, logger, render=False, agent_x=None, agent_y=None, p=0) -> Tuple[float, np.array]:
-        loading_progress = ['▁','▁','▃','▃','▄','▄','▅','▅','▆','▆','▇','▇','█','█','▇','▇','▆','▆','▅','▅','▄','▄','▃','▃','▁','▁']
-        global next_state
-        done = False
-        state, old_info = env.reset()
+    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, p=0) -> Tuple[float, np.array]:
+        loading_progress = ['■ □ □','□ ■ □','□ □ ■']
+        levels_to_run = len(levels)
+        global_fitness = 0
         fitness = 0
-        agent_parameters = self.nn.agent_parameters
-        n_episodes = agent_parameters['n_episodes']
-        self.nn.to(self.nn.device)
-        for episode in range(n_episodes):
+        for selected_level in range(levels_to_run):
+            global_fitness += fitness
+            fitness = 0
+            env = MarioEnvironment.create_mario_environment(levels[selected_level])
+            global next_state
+            state, old_info = env.reset()
+            agent_parameters = self.nn.agent_parameters
+            n_episodes = agent_parameters['n_episodes']
+            self.nn.to(self.nn.device)
+            for episode in range(n_episodes):
+                if logger is not None:
+                    logger.tick()
+                    logger.print('Generic Agent ' + str(p) + ' - Fitness: (' + str(round(fitness)) + ') - Approx Training '
+                                                                                                     'Time: ' + self.estimate)
+                else:
+                    update = int(time.time()) % len(loading_progress)
+                    sys.stdout.write("\r | Calculating Fitness " + loading_progress[update] + " | ")
+                    sys.stdout.flush()
+
+                if render:
+                    env.render()
+
+                state = state.to(self.nn.device)
+
+                # Determine the action
+                action_probability = torch.nn.functional.softmax(
+                    self.nn.forward(state).mul(agent_parameters['action_conf']),
+                    dim=1)
+                m = torch.distributions.Categorical(action_probability)
+                action = m.sample().item()
+                next_state, reward, done, info = env.step(action)
+                reward = min(agent_parameters['reward_max_x_change'], max(-agent_parameters['reward_max_x_change'],
+                                                                          info['x_pos'] - old_info[
+                                                                              'x_pos']))  # Clip the x_pos difference to deal with warp points, etc.
+                old_info = info
+                reward /= 100  # 15
+                fitness += reward
+
+                # Format the generic agent data to ensure it's compatible with Reinforcement Agents' memory
+                reward = torch.tensor([reward])
+                action = torch.tensor([[action]], device=self.nn.device, dtype=torch.long)
+
+                if self.replay_memory is not None:
+                    self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
+
+                if isinstance(agent_x, list):
+                    agent_x.append(episode * selected_level)
+                    agent_y.append(fitness / levels_to_run)
+
+                state = next_state
+                if done:
+                    break
+
+            env.close()
+
             if logger is not None:
-                logger.tick()
-                logger.print('Generic Agent ' + str(p) + ' - Fitness: (' + str(round(fitness)) + ') - Approx Training '
-                                                                                                 'Time: ' + self.estimate)
-            else:
-                sys.stdout.write("\r | " + loading_progress[episode % len(loading_progress)] + " Calculating Fitness | ")
-                sys.stdout.flush()
-
-            if render:
-                env.render()
-
-            state = state.to(self.nn.device)
-
-            # Determine the action
-            action_probability = torch.nn.functional.softmax(
-                self.nn.forward(state).mul(agent_parameters['action_conf']),
-                dim=1)
-            m = torch.distributions.Categorical(action_probability)
-            action = m.sample().item()
-            next_state, reward, done, info = env.step(action)
-            reward = min(agent_parameters['reward_max_x_change'], max(-agent_parameters['reward_max_x_change'],
-                                                                      info['x_pos'] - old_info[
-                                                                          'x_pos']))  # Clip the x_pos difference to deal with warp points, etc.
-            old_info = info
-            reward /= 100  # 15
-            fitness += reward
-
-            # Format the generic agent data to ensure it's compatible with Reinforcement Agents' memory
-            reward = torch.tensor([reward])
-            action = torch.tensor([[action]], device=self.nn.device, dtype=torch.long)
-
-            if self.replay_memory is not None:
-                self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
-
-            if isinstance(agent_x, list):
-                agent_x.append(episode)
-                agent_y.append(fitness)
-
-            state = next_state
-            if done:
-                break
-
-        if logger is not None:
-            self.estimate = str(logger.get_estimate())
+                self.estimate = str(logger.get_estimate())
 
         self.nn.to(torch.device('cpu'))
-        self.fitness = fitness
+        self.fitness = (global_fitness / levels_to_run)
 
         return fitness, self.nn.get_weights_biases()
 
@@ -209,7 +219,7 @@ class ReinforcementCNNIndividual(Individual):
         loss.backward()
         self.optimizer.step()
 
-    def run_single(self, env, logger, render=False, index=0, agent_x=None, agent_y=None) -> Tuple[float, np.array]:
+    def run_single(self, env, levels, logger, render=False, index=0, agent_x=None, agent_y=None) -> Tuple[float, np.array]:
         global next_state
         self.fitness = 0.0
         old_fitness = 0.0

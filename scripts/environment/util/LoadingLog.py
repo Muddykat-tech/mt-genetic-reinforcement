@@ -33,8 +33,8 @@ class PrintLoader:
     def print_progress(self, progress):
         self.progress = min(self.max, progress)
         percent = (self.progress / self.max)
-        max_characters = int(116 * percent)
-        loadingbar = ["-"] * 116
+        max_characters = int(86 * percent)
+        loadingbar = ["-"] * 86
         for index in range(max_characters):
             loadingbar[index] = self.symbol
 

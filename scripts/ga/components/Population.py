@@ -104,7 +104,7 @@ class Population:
                                                                                              self.p_crossover,
                                                                                              self.batch_size)
 
-    def run(self, env, run_generation: Callable, output_folder=None, replay_memory=None):
+    def run(self, levels, run_generation: Callable, output_folder=None, replay_memory=None):
         best_individual = sorted(self.old_population, key=lambda ind: ind.fitness, reverse=True)[0]
         logger = self.logger
         render = self.population_settings['render_mode']
@@ -112,11 +112,11 @@ class Population:
         print('Training Model:')
         for i in range(self.n_generations):
             logger.print_progress(i)
-            [p.calculate_fitness(env, logger, render, index) for index, p in enumerate(self.old_population)]
+            [p.calculate_fitness(levels, logger, render, index) for index, p in enumerate(self.old_population)]
 
             self.new_population = [None for _ in range(self.population_size)]
 
-            run_generation(env, self.old_population, self.new_population, self.population_settings, logger)
+            run_generation(levels, self.old_population, self.new_population, self.population_settings, logger)
 
             self.update_old_population()
 

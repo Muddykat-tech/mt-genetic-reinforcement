@@ -14,7 +14,6 @@ def crossover(parent1_weights_biases: np.array, parent2_weights_biases: np.array
     position = np.random.randint(0, parent1_weights_biases.shape[0])
     child1_weights_biases = np.copy(parent1_weights_biases)
     child2_weights_biases = np.copy(parent2_weights_biases)
-
     if np.random.rand() < p:
         child1_weights_biases[position:], child2_weights_biases[position:] = \
             child2_weights_biases[position:], child1_weights_biases[position:]
