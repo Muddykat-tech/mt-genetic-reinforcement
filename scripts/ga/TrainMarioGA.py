@@ -28,7 +28,7 @@ population_settings['agent-generic'] = [0, CNNIndividual, AgentParameters.MarioC
 population_settings['seed-agents'] = agents
 population_settings['p_mutation'] = 0.05
 population_settings['p_crossover'] = 0.8
-population_settings['n_generations'] = 5
+population_settings['n_generations'] = 10
 population_settings['render_mode'] = 0
 
 param = AgentParameters.MarioCudaAgent()

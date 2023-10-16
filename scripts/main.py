@@ -24,7 +24,7 @@ logger = LoadingLog.PrintLoader(param.get('experience_episodes'), 'x')
 agent_x = []  # Level
 agent_y = []  # Average Fitness
 run_batch = 10
-agents_to_load = ["-10-15-2023_19-17_NN=CNNIndividual_POPSIZE=40_GEN=5_PMUTATION_0.05_PCROSSOVER_0.8_BATCH_SIZE=32__I=0_SCORE=117.9599999999996"]
+agents_to_load = ["MERGED-10-09-2023_17-53_NN=CNNIndividual_POPSIZE=32_GEN=25_PMUTATION_0.05_PCROSSOVER_0.8_BATCH_SIZE=32__I=0_SCORE=35.49999999999995"]
 agents_for_level = []
 
 for agent_name in agents_to_load:
@@ -51,7 +51,7 @@ plt.figure(figsize=(10, 6))  # Optional: Set the figure size
 plt.bar(agent_x, agent_y, color='skyblue')
 plt.xlabel('Level')  # X-axis label
 plt.ylabel('Average Fitness')  # Y-axis label
-plt.title('Average World Progression for Random Untrained Agent')
+plt.title('Average World Progression for Attempted Merge Agent Train Time 45m')
 plt.xticks(range(len(agent_x)), level_names, rotation=45)
 plt.axhline(30, color='red', linestyle='--', label=f'Level Flag')
 plt.legend()

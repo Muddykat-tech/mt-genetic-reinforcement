@@ -64,7 +64,7 @@ def statistics(population: List[Individual]):
 
 
 def generation(env, old_population, new_population, p_settings, logger: LoadingLog.PrintLoader):
-    elite_population = elitism(old_population)
+    elite_population = [] #elitism(old_population) # Disabled Elitism for now
     for i in range(0, len(old_population) - 1, 2):
         logger.tick()
         p_crossover = p_settings['p_crossover']
