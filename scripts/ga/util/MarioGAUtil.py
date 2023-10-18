@@ -1,6 +1,7 @@
 # Methods
 import copy
 import random
+import threading
 from collections import deque, namedtuple
 from typing import List, Tuple
 
@@ -8,6 +9,9 @@ import numpy as np
 
 from environment.util import LoadingLog
 from ga.components.Individuals import Individual
+from concurrent.futures import ThreadPoolExecutor, wait
+
+lock = threading.Lock()
 
 
 def crossover(parent1_weights_biases: np.array, parent2_weights_biases: np.array, p: float):
@@ -63,36 +67,34 @@ def statistics(population: List[Individual]):
     return np.mean(population_fitness), np.min(population_fitness), np.max(population_fitness)
 
 
-def generation(env, old_population, new_population, p_settings, logger: LoadingLog.PrintLoader):
-    elite_population = [] #elitism(old_population) # Disabled Elitism for now
-    for i in range(0, len(old_population) - 1, 2):
-        logger.tick()
-        p_crossover = p_settings['p_crossover']
-        p_mutation = p_settings['p_crossover']
-        render_mode = p_settings['render_mode']
+def process_individual(i, old_population, new_population, p_settings, logger, levels):
+    logger.tick()
+    p_crossover = p_settings['p_crossover']
+    p_mutation = p_settings['p_crossover']
+    render_mode = p_settings['render_mode']
 
-        # Selection
-        parent1, parent2 = tournament_selection(old_population)
+    # Selection
+    parent1, parent2 = tournament_selection(old_population)
 
-        # Crossover
-        child1 = copy.deepcopy(parent1)
-        child2 = copy.deepcopy(parent2)
+    # Crossover
+    child1 = copy.deepcopy(parent1)
+    child2 = copy.deepcopy(parent2)
 
-        child1.weights_biases, child2.weights_biases = crossover(parent1.weights_biases,
-                                                                 parent2.weights_biases,
-                                                                 p_crossover)
-        # Mutation
-        child1.weights_biases = mutation(child1.weights_biases, p_mutation)
-        child2.weights_biases = mutation(child2.weights_biases, p_mutation)
+    child1.weights_biases, child2.weights_biases = crossover(parent1.weights_biases, parent2.weights_biases,
+                                                             p_crossover)
+    # Mutation
+    child1.weights_biases = mutation(child1.weights_biases, p_mutation)
+    child2.weights_biases = mutation(child2.weights_biases, p_mutation)
 
-        # Update model weights and biases
-        child1.update_model()
-        child2.update_model()
+    # Update model weights and biases
+    child1.update_model()
+    child2.update_model()
 
-        child1.calculate_fitness(env, logger, render_mode, i)
-        child2.calculate_fitness(env, logger, render_mode, i + 1)
+    child1.calculate_fitness(levels, logger, render_mode, i)
+    child2.calculate_fitness(levels, logger, render_mode, i + 1)
 
-        # If children fitness is greater than the parents update population
+    # If children fitness is greater than the parents, update population
+    with lock:  # Acquire the lock to ensure thread safety
         if child1.fitness + child2.fitness > parent1.fitness + parent2.fitness:
             new_population[i] = child1
             new_population[i + 1] = child2
@@ -100,13 +102,32 @@ def generation(env, old_population, new_population, p_settings, logger: LoadingL
             new_population[i] = parent1
             new_population[i + 1] = parent2
 
-    if len(elite_population) > 0:
-        new_population = sorted(new_population, key=lambda agent: agent.fitness, reverse=True)
-        new_population = new_population[:-len(elite_population)]
-        refined_population = new_population + elite_population
-        return refined_population
+
+def generation(levels, old_population, new_population, p_settings, logger: LoadingLog.PrintLoader, use_multithreading):
+    elite_population = []  # elitism(old_population) # Disabled Elitism for now
+
+    if use_multithreading:
+        num_threads = 4  # Adjust as needed
+
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = []
+            for i in range(0, len(old_population) - 1, 2):
+                future = executor.submit(process_individual, i, old_population, new_population, p_settings, logger, levels)
+                futures.append(future)
+
+            # Wait for all threads to finish
+            wait(futures)
+
+        if len(elite_population) > 0:
+            with lock:  # Acquire the lock to ensure thread safety
+                new_population = sorted(new_population, key=lambda agent: agent.fitness, reverse=True)
+                new_population = new_population[:-len(elite_population)]
+                refined_population = new_population + elite_population
+                return refined_population
+    else:
+        for i in range(0, len(old_population) - 1, 2):
+            process_individual(i, old_population, new_population, p_settings, logger, levels)
 
     return new_population
-
 
 # Changed Algorithm to match the solution proposed in https://youtu.be/ziMHaGQJuSI?si=ijzXnefsGfgVaAxx

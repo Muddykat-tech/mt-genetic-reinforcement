@@ -27,8 +27,8 @@ class Individual(ABC):
         self.fitness = 0.0
         self.weights_biases: np.array = None
 
-    def calculate_fitness(self, levels, logger, render, p) -> None:
-        self.fitness, self.weights_biases = self.run_single(levels, logger, render, p=p)
+    def calculate_fitness(self, levels, logger, render, index) -> None:
+        self.fitness, self.weights_biases = self.run_single(levels, logger, render, index=index)
 
     def update_model(self) -> None:
         self.nn.update_weights_biases(self.weights_biases)
@@ -38,7 +38,7 @@ class Individual(ABC):
         pass
 
     @abstractmethod
-    def run_single(self, levels, logger, render=False, p=0) -> Tuple[float, np.array]:
+    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0) -> Tuple[float, np.array]:
         pass
 
 
@@ -56,14 +56,11 @@ class CNNIndividual(Individual):
         return self.nn.agent_parameters[parameter]
 
     # This is where actions the agent take are calculated, fitness is modified here.
-    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, p=0) -> Tuple[float, np.array]:
+    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0) -> Tuple[float, np.array]:
         loading_progress = ['■ □ □','□ ■ □','□ □ ■']
         levels_to_run = len(levels)
-        global_fitness = 0
-        fitness = 0
+        self.fitness = 0
         for selected_level in range(levels_to_run):
-            global_fitness += fitness
-            fitness = 0
             env = MarioEnvironment.create_mario_environment(levels[selected_level])
             global next_state
             state, old_info = env.reset()
@@ -72,15 +69,17 @@ class CNNIndividual(Individual):
             self.nn.to(self.nn.device)
             for episode in range(n_episodes):
                 if logger is not None:
+                    logger.print(f'Calculating Individual {index} Fitness - {round(self.fitness, ndigits=2)}')
                     logger.tick()
-                    logger.print('Generic Agent ' + str(p) + ' - Fitness: (' + str(round(fitness)) + ') - Approx Training '
-                                                                                                     'Time: ' + self.estimate)
                 else:
                     update = int(time.time()) % len(loading_progress)
                     sys.stdout.write("\r | Calculating Fitness " + loading_progress[update] + " | ")
                     sys.stdout.flush()
 
                 if render:
+                    if logger is not None:
+                        logger.print('Known issue using threads and environmental rendering, gets stuck or crashes')
+                        logger.tick()
                     env.render()
 
                 state = state.to(self.nn.device)
@@ -97,7 +96,7 @@ class CNNIndividual(Individual):
                                                                               'x_pos']))  # Clip the x_pos difference to deal with warp points, etc.
                 old_info = info
                 reward /= 100  # 15
-                fitness += reward
+                self.fitness += reward
 
                 # Format the generic agent data to ensure it's compatible with Reinforcement Agents' memory
                 reward = torch.tensor([reward])
@@ -108,7 +107,7 @@ class CNNIndividual(Individual):
 
                 if isinstance(agent_x, list):
                     agent_x.append(episode * selected_level)
-                    agent_y.append(fitness / levels_to_run)
+                    agent_y.append(self.fitness / levels_to_run)
 
                 state = next_state
                 if done:
@@ -120,9 +119,8 @@ class CNNIndividual(Individual):
                 self.estimate = str(logger.get_estimate())
 
         self.nn.to(torch.device('cpu'))
-        self.fitness = (global_fitness / levels_to_run)
 
-        return fitness, self.nn.get_weights_biases()
+        return self.fitness, self.nn.get_weights_biases()
 
 
 # Convolutional Neural Network Individual
@@ -166,9 +164,9 @@ class ReinforcementCNNIndividual(Individual):
             greedy_act = np.argmax(net_out)
             max_q = net_out[greedy_act]
 
-            if self.get('q_val_plot_freq') > 0 and steps_done % self.get('q_val_plot_freq') == 0:
-                self.q_values_plot.add_data_point("bestq", steps_done, [max_q], True, True)
-                self.q_values_plot.update_image('eps_threshold = ' + str(eps_threshold))
+            # if self.get('q_val_plot_freq') > 0 and steps_done % self.get('q_val_plot_freq') == 0:
+            #     self.q_values_plot.add_data_point("bestq", steps_done, [max_q], True, True)
+            #     self.q_values_plot.update_image('eps_threshold = ' + str(eps_threshold))
 
         steps_done += 1
 
@@ -219,7 +217,7 @@ class ReinforcementCNNIndividual(Individual):
         loss.backward()
         self.optimizer.step()
 
-    def run_single(self, env, levels, logger, render=False, index=0, agent_x=None, agent_y=None) -> Tuple[float, np.array]:
+    def run_single(self, levels, logger, render=False, p=0, agent_x=None, agent_y=None) -> Tuple[float, np.array]:
         global next_state
         self.fitness = 0.0
         old_fitness = 0.0
@@ -229,80 +227,72 @@ class ReinforcementCNNIndividual(Individual):
         moving_fitness_updates = 0
         n_episodes = self.get('n_episodes')
         xp_episodes = self.get('experience_episodes')
-
-        self.nn.to(self.nn.device)
-        self.target_nn.to(self.nn.device)
-
-        # Average the fitness result between '
-        for episode in range(xp_episodes):  # 'Episodes'
-            state, old_info = env.reset()
-            old_fitness = self.fitness if old_fitness < self.fitness else old_fitness
-            self.fitness = 0.0
-            # logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
-
-            for t in range(n_episodes):  # rename to n_steps
-                # logger.tick()
+        for level in levels:
+            env = MarioEnvironment.create_mario_environment(level)
+            state, info = env.reset()
+            self.nn.to(self.nn.device)
+            self.target_nn.to(self.nn.device)
+            # Average the fitness result between '
+            for episode in range(xp_episodes):  # 'Episodes'
+                state, old_info = env.reset()
+                old_fitness = self.fitness if old_fitness < self.fitness else old_fitness
+                self.fitness = 0.0
                 # logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
-                if render:
-                    env.render()
 
-                action, steps_done = self.select_action(env, state, steps_done)
-                next_state, reward, done, info = env.step(action)
-                reward = min(self.get('reward_max_x_change'), max(-self.get('reward_max_x_change'),
-                                                                  info['x_pos'] - old_info[
-                                                                      'x_pos']))  # Clip the x_pos difference to deal with warp points, etc.
-                old_info = info
-                reward /= 100  # 15
+                for t in range(n_episodes):  # rename to n_steps
+                    # logger.tick()
+                    # logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
+                    if render:
+                        env.render()
 
-                self.fitness += reward
-                reward = torch.tensor([reward])
+                    action, steps_done = self.select_action(env, state, steps_done)
+                    next_state, reward, done, info = env.step(action)
+                    reward = min(self.get('reward_max_x_change'), max(-self.get('reward_max_x_change'),
+                                                                      info['x_pos'] - old_info[
+                                                                          'x_pos']))  # Clip the x_pos difference to deal with warp points, etc.
+                    old_info = info
+                    reward /= 100  # 15
 
-                self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
+                    self.fitness += reward
+                    reward = torch.tensor([reward])
 
-                state = next_state
+                    self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
 
-                if steps_done >= self.get('learn_start') and steps_done % self.get('train_freq') == 0:
-                    self.train_step()
+                    state = next_state
 
-                if steps_done % self.nn.agent_parameters['target_update_freq'] == 0:
-                    self.target_nn.load_state_dict(self.nn.state_dict())
+                    if steps_done >= self.get('learn_start') and steps_done % self.get('train_freq') == 0:
+                        self.train_step()
 
-                if steps_done % self.get('save_freq') == 0:
-                    if self.get('q_val_plot_freq') > 0:
-                        self.q_values_plot.save_image(self.get('log_dir') + '/graphs/')
-                    self.fitness_plot.save_image(self.get('log_dir') + '/graphs/')
-                    output_filename = self.get('log_dir') + '/models/RL_agent_' + datetime.now().strftime(
-                        "%m%d%Y_%H_%M_%S") + '_' + str(steps_done) + '.npy'
-                    np.save(output_filename, self.nn.get_weights_biases())
+                    if steps_done % self.nn.agent_parameters['target_update_freq'] == 0:
+                        self.target_nn.load_state_dict(self.nn.state_dict())
 
-                    # target_net_state_dict = self.target_nn.state_dict()
-                    # policy_net_state_dict = self.nn.state_dict()
-                    # for key in policy_net_state_dict:
-                    #     target_net_state_dict[key] = policy_net_state_dict[key] * self.get('tau') + \
-                    #                                  target_net_state_dict[
-                    #                                      key] * (1 - self.get('tau'))
-                    #     self.target_nn.load_state_dict(target_net_state_dict)
+                    if steps_done % self.get('save_freq') == 0:
+                        if self.get('q_val_plot_freq') > 0:
+                            self.q_values_plot.save_image(self.get('log_dir') + '/graphs/')
+                        self.fitness_plot.save_image(self.get('log_dir') + '/graphs/')
+                        output_filename = self.get('log_dir') + '/models/RL_agent_' + datetime.now().strftime(
+                            "%m%d%Y_%H_%M_%S") + '_' + str(steps_done) + '.npy'
+                        np.save(output_filename, self.nn.get_weights_biases())
 
-                if done:
-                    break
+                    if done:
+                        break
 
-            print("Steps: " + str(steps_done) + ", fitness: " + str(self.fitness) + ', got flag: ' + str(
-                info['flag_get']))
+                print("Steps: " + str(steps_done) + ", fitness: " + str(self.fitness) + ', got flag: ' + str(info['flag_get']))
 
-            # Plot smoothed running average of fitness
-            moving_fitness = moving_fitness_mom * moving_fitness + (1.0 - moving_fitness_mom) * self.fitness
-            moving_fitness_updates += 1
-            zero_debiased_moving_fitness = moving_fitness / (1.0 - moving_fitness_mom ** moving_fitness_updates)
-            self.fitness_plot.add_data_point("fitness", steps_done, [zero_debiased_moving_fitness], False, True)
-            self.fitness_plot.update_image('')
+                # Plot smoothed running average of fitness
+                moving_fitness = moving_fitness_mom * moving_fitness + (1.0 - moving_fitness_mom) * self.fitness
+                moving_fitness_updates += 1
+                zero_debiased_moving_fitness = moving_fitness / (1.0 - moving_fitness_mom ** moving_fitness_updates)
+                self.fitness_plot.add_data_point("fitness", steps_done, [zero_debiased_moving_fitness], False, True)
+                self.fitness_plot.update_image('')
 
-            if agent_x is not None:
-                # logger.print_progress(episode)
-                agent_x.append(episode)
-                agent_y.append(self.fitness)
+                if agent_x is not None:
+                    # logger.print_progress(episode)
+                    agent_x.append(episode)
+                    agent_y.append(self.fitness)
 
-            # Reset the estimate after we've finished one training cycle
-
+                # Reset the estimate after we've finished one training cycle
+            env.close()
         # Help clear GPU memory, by moving network back to the cpu once training run is complete
         self.nn.to(torch.device('cpu'))
         self.target_nn.to(torch.device('cpu'))

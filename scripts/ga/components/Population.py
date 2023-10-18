@@ -1,7 +1,10 @@
 import copy
 import gc
 import random
+import threading
+import time
 from collections import namedtuple, deque
+from concurrent.futures import ThreadPoolExecutor, wait
 from datetime import datetime
 from functools import reduce
 from typing import Callable
@@ -14,6 +17,10 @@ from environment.util import LoadingLog
 from ga.components.Individuals import CNNIndividual
 from ga.util.MarioGAUtil import statistics
 from nn.setup import AgentParameters
+
+
+def calculate_fitness_in_thread(index, p, levels, logger, render):
+    p.calculate_fitness(levels, logger, render, index)
 
 
 class Population:
@@ -42,7 +49,7 @@ class Population:
         seed_agent_names = population_settings['seed-agents']
         if seed_agent_names is not None:
             for name in seed_agent_names:
-                model = CNNIndividual(AgentParameters.MarioCudaAgent().agent_parameters, None)
+                model = CNNIndividual(AgentParameters.MarioCudaAgent().agent_parameters, replay_memory)
                 model.nn.load('../../models/seed_agents/' + name + '.npy')
                 seed_population.append(model)
 
@@ -72,6 +79,7 @@ class Population:
         self.old_population = population
 
     def update_old_population(self):
+        self.logger.set_stage_name('Updating Old Population')
         # Move tensors from GPU to CPU to release GPU memory
         self.old_population = [agent.nn.to(torch.device('cpu')) for agent in self.old_population]
         self.old_population = copy.deepcopy(self.new_population)
@@ -108,15 +116,24 @@ class Population:
         best_individual = sorted(self.old_population, key=lambda ind: ind.fitness, reverse=True)[0]
         logger = self.logger
         render = self.population_settings['render_mode']
+        use_multithreading = self.population_settings['use_multithreading']
         print('Population Settings: \n' + str(self.population_settings))
         print('Training Model:')
-        for i in range(self.n_generations):
+        for i in range(self.population_settings['n_generations']):
             logger.print_progress(i)
-            [p.calculate_fitness(levels, logger, render, index) for index, p in enumerate(self.old_population)]
+            self.logger.set_stage_name('Evaluating Fitness')
+            if use_multithreading:
+                # rough estimate of 8 times speed improvement!
+                self.test_thread_calc(levels, logger, render, self.population_settings['n_threads'])
+            else:
+                [p.calculate_fitness(levels, logger, render, index) for index, p in enumerate(self.old_population)]
 
             self.new_population = [None for _ in range(self.population_size)]
 
-            run_generation(levels, self.old_population, self.new_population, self.population_settings, logger)
+            self.logger.set_stage_name('Selecting, Crossing and Mutating')
+
+            run_generation(levels, self.old_population, self.new_population, self.population_settings, logger,
+                           use_multithreading)
 
             self.update_old_population()
 
@@ -157,3 +174,9 @@ class Population:
     @staticmethod
     def now():
         return datetime.now().strftime('%m-%d-%Y_%H-%M')
+
+    def test_thread_calc(self, levels, logger, render, num_threads):
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            [executor.submit(calculate_fitness_in_thread, index, p, levels, logger, render) for index, p in enumerate(self.old_population)]
+
+
