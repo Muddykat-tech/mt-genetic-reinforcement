@@ -107,7 +107,7 @@ def generation(levels, old_population, new_population, p_settings, logger: Loadi
     elite_population = []  # elitism(old_population) # Disabled Elitism for now
 
     if use_multithreading:
-        num_threads = 4  # Adjust as needed
+        num_threads = p_settings['n_threads']
 
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
             futures = []
