@@ -19,7 +19,7 @@ Settings for Population are in ```scripts/ga/TrainMarioGA.py```<br>
 Settings for Agents are in ```scripts/nn/setup/AgentParameters.py```
 
 #### Notes
-- When using Multithreading, you must disable the human render mode in the population settings as it will freeze.
+- When using Multithreading, you must disable the human render mode and gpu usage as it will freeze otherwise.
 - The multithreading functionality is inconsistent, I've had successful runs with it, however access violations are
 somewhat common and have caused crashes, I'm not sure of the exact cause at the moment.
 

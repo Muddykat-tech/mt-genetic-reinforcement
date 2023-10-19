@@ -57,9 +57,9 @@ class CNNIndividual(Individual):
 
     # This is where actions the agent take are calculated, fitness is modified here.
     def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0) -> Tuple[float, np.array]:
+        self.fitness = 0
         loading_progress = ['■ □ □','□ ■ □','□ □ ■']
         levels_to_run = len(levels)
-        self.fitness = 0
         for selected_level in range(levels_to_run):
             env = MarioEnvironment.create_mario_environment(levels[selected_level])
             global next_state
@@ -69,8 +69,9 @@ class CNNIndividual(Individual):
             self.nn.to(self.nn.device)
             for episode in range(n_episodes):
                 if logger is not None:
-                    logger.print(f'Calculating Individual {index} Fitness - {round(self.fitness, ndigits=2)}')
-                    logger.tick()
+                    # logger.print(f'Calculating Individual {index} Fitness - {round(self.fitness, ndigits=2)}')
+                    # logger.tick()
+                    pass
                 else:
                     update = int(time.time()) % len(loading_progress)
                     sys.stdout.write("\r | Calculating Fitness " + loading_progress[update] + " | ")
@@ -88,6 +89,7 @@ class CNNIndividual(Individual):
                 action_probability = torch.nn.functional.softmax(
                     self.nn.forward(state).mul(agent_parameters['action_conf']),
                     dim=1)
+
                 m = torch.distributions.Categorical(action_probability)
                 action = m.sample().item()
                 next_state, reward, done, info = env.step(action)
@@ -99,11 +101,11 @@ class CNNIndividual(Individual):
                 self.fitness += reward
 
                 # Format the generic agent data to ensure it's compatible with Reinforcement Agents' memory
-                reward = torch.tensor([reward])
-                action = torch.tensor([[action]], device=self.nn.device, dtype=torch.long)
-
-                if self.replay_memory is not None:
-                    self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
+                # reward = torch.tensor([reward])
+                # action = torch.tensor([[action]], device=self.nn.device, dtype=torch.long)
+                #
+                # if self.replay_memory is not None:
+                #     self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
 
                 if isinstance(agent_x, list):
                     agent_x.append(episode * selected_level)
@@ -119,8 +121,8 @@ class CNNIndividual(Individual):
                 self.estimate = str(logger.get_estimate())
 
         self.nn.to(torch.device('cpu'))
-
-        return self.fitness, self.nn.get_weights_biases()
+        global_fitness = self.fitness / levels_to_run
+        return global_fitness, self.nn.get_weights_biases()
 
 
 # Convolutional Neural Network Individual

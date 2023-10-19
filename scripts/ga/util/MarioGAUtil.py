@@ -11,6 +11,8 @@ from environment.util import LoadingLog
 from ga.components.Individuals import Individual
 from concurrent.futures import ThreadPoolExecutor, wait
 
+from concurrent.futures import ThreadPoolExecutor, wait
+
 lock = threading.Lock()
 
 

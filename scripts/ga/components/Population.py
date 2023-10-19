@@ -23,6 +23,7 @@ def calculate_fitness_in_thread(index, p, levels, logger, render):
     p.calculate_fitness(levels, logger, render, index)
 
 
+
 class Population:
     def __init__(self, population_settings, replay_memory):
         self.population_settings = population_settings
@@ -55,7 +56,7 @@ class Population:
 
         self.old_population = generic_population + reinforcement_population + seed_population
         self.population_size = len(self.old_population)
-        self.new_population = []
+        self.new_population = [None for i in range(len(self.old_population))]
 
         # Setting hyperparameters for ga:
         self.p_mutation = population_settings['p_mutation']
@@ -79,7 +80,6 @@ class Population:
         self.old_population = population
 
     def update_old_population(self):
-        self.logger.set_stage_name('Updating Old Population')
         # Move tensors from GPU to CPU to release GPU memory
         self.old_population = [agent.nn.to(torch.device('cpu')) for agent in self.old_population]
         self.old_population = copy.deepcopy(self.new_population)
@@ -116,24 +116,27 @@ class Population:
         best_individual = sorted(self.old_population, key=lambda ind: ind.fitness, reverse=True)[0]
         logger = self.logger
         render = self.population_settings['render_mode']
+        generations = self.population_settings['n_generations']
         use_multithreading = self.population_settings['use_multithreading']
         print('Population Settings: \n' + str(self.population_settings))
         print('Training Model:')
-        for i in range(self.population_settings['n_generations']):
+        for i in range(generations):
             logger.print_progress(i)
-            self.logger.set_stage_name('Evaluating Fitness')
+
+            self.logger.set_stage_name(f'Evaluating Fitness ({i}/{generations})')
+            self.new_population = [None for _ in range(self.population_size)]
             if use_multithreading:
                 # rough estimate of 8 times speed improvement!
                 self.test_thread_calc(levels, logger, render, self.population_settings['n_threads'])
             else:
                 [p.calculate_fitness(levels, logger, render, index) for index, p in enumerate(self.old_population)]
 
-            self.new_population = [None for _ in range(self.population_size)]
-
-            self.logger.set_stage_name('Selecting, Crossing and Mutating')
+            self.logger.set_stage_name(f'Selecting, Crossing and Mutating ({i}/{generations})')
 
             run_generation(levels, self.old_population, self.new_population, self.population_settings, logger,
                            use_multithreading)
+
+            self.logger.set_stage_name(f'Updating Old Population ({i}/{generations})')
 
             self.update_old_population()
 
@@ -177,6 +180,5 @@ class Population:
 
     def test_thread_calc(self, levels, logger, render, num_threads):
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
-            [executor.submit(calculate_fitness_in_thread, index, p, levels, logger, render) for index, p in enumerate(self.old_population)]
-
-
+            [executor.submit(calculate_fitness_in_thread, index, p, levels, logger, render) for index, p in
+             enumerate(self.old_population)]
