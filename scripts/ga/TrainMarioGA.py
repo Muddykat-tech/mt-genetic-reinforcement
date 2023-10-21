@@ -27,9 +27,9 @@ if __name__ == '__main__':
     # Setup Population Settings for Genetic Algorithm Training. (Move this to a specified settings script)
     population_settings = {}
 
-    population_settings['agent-reinforcement'] = [1, ReinforcementCNNIndividual,
+    population_settings['agent-reinforcement'] = [2, ReinforcementCNNIndividual,
                                                   AgentParameters.MarioCudaAgent().agent_parameters]
-    population_settings['agent-generic'] = [201, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
+    population_settings['agent-generic'] = [0, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
     population_settings['seed-agents'] = agents
     population_settings['p_mutation'] = 0.05
     population_settings['p_crossover'] = 0.8

@@ -165,9 +165,9 @@ class ReinforcementCNNIndividual(Individual):
             greedy_act = np.argmax(net_out)
             max_q = net_out[greedy_act]
 
-            # if self.get('q_val_plot_freq') > 0 and steps_done % self.get('q_val_plot_freq') == 0:
-            #     self.q_values_plot.add_data_point("bestq", steps_done, [max_q], True, True)
-            #     self.q_values_plot.update_image('eps_threshold = ' + str(eps_threshold))
+            if self.get('q_val_plot_freq') > 0 and steps_done % self.get('q_val_plot_freq') == 0:
+                self.q_values_plot.add_data_point("bestq", steps_done, [max_q], True, True)
+                self.q_values_plot.update_image('eps_threshold = ' + str(eps_threshold))
 
         steps_done += 1
 
@@ -218,9 +218,9 @@ class ReinforcementCNNIndividual(Individual):
         loss.backward()
         self.optimizer.step()
 
-    def run_single(self, levels, logger, render=False, p=0, agent_x=None, agent_y=None) -> Tuple[float, np.array]:
+    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0) -> Tuple[float, np.array]:
         global next_state
-        self.fitness = 0.0
+        fitness = 0.0
         old_fitness = 0.0
         steps_done = 0
         moving_fitness = 0
@@ -237,12 +237,12 @@ class ReinforcementCNNIndividual(Individual):
             for episode in range(xp_episodes):  # 'Episodes'
                 state, old_info = env.reset()
                 old_fitness = self.fitness if old_fitness < self.fitness else old_fitness
-                self.fitness = 0.0
-                # logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
+                fitness = 0.0
+                logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
 
                 for t in range(n_episodes):  # rename to n_steps
-                    # logger.tick()
-                    # logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
+                    logger.tick()
+                    logger.print(str(episode / xp_episodes) + ' Agent: (R) | Approx: ' + self.estimate)
                     if render:
                         env.render()
 
@@ -254,7 +254,7 @@ class ReinforcementCNNIndividual(Individual):
                     old_info = info
                     reward /= 100  # 15
 
-                    self.fitness += reward
+                    fitness += reward
                     reward = torch.tensor([reward])
 
                     self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
@@ -288,7 +288,7 @@ class ReinforcementCNNIndividual(Individual):
                 self.fitness_plot.update_image('')
 
                 if agent_x is not None:
-                    # logger.print_progress(episode)
+                    logger.print_progress(episode)
                     agent_x.append(episode)
                     agent_y.append(self.fitness)
 
@@ -298,4 +298,4 @@ class ReinforcementCNNIndividual(Individual):
         self.nn.to(torch.device('cpu'))
         self.target_nn.to(torch.device('cpu'))
 
-        return self.fitness, self.nn.get_weights_biases()
+        return fitness, self.nn.get_weights_biases()
