@@ -57,7 +57,7 @@ class CNNIndividual(Individual):
 
     # This is where actions the agent take are calculated, fitness is modified here.
     def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0) -> Tuple[float, np.array]:
-        self.fitness = 0
+        fitness = 0
         loading_progress = ['■ □ □','□ ■ □','□ □ ■']
         levels_to_run = len(levels)
         for selected_level in range(levels_to_run):
@@ -69,12 +69,12 @@ class CNNIndividual(Individual):
             self.nn.to(self.nn.device)
             for episode in range(n_episodes):
                 if logger is not None:
-                    # logger.print(f'Calculating Individual {index} Fitness - {round(self.fitness, ndigits=2)}')
-                    # logger.tick()
+                    logger.print(f'Calculating Individual {index}')
+                    logger.tick()
                     pass
                 else:
                     update = int(time.time()) % len(loading_progress)
-                    sys.stdout.write("\r | Calculating Fitness " + loading_progress[update] + " | ")
+                    sys.stdout.write("\r | Calculating Fitness {Agent[" + str(index) + "]} | " + loading_progress[update] + " |")
                     sys.stdout.flush()
 
                 if render:
@@ -98,8 +98,7 @@ class CNNIndividual(Individual):
                                                                               'x_pos']))  # Clip the x_pos difference to deal with warp points, etc.
                 old_info = info
                 reward /= 100  # 15
-                self.fitness += reward
-
+                fitness += reward
                 # Format the generic agent data to ensure it's compatible with Reinforcement Agents' memory
                 # reward = torch.tensor([reward])
                 # action = torch.tensor([[action]], device=self.nn.device, dtype=torch.long)
@@ -109,7 +108,7 @@ class CNNIndividual(Individual):
 
                 if isinstance(agent_x, list):
                     agent_x.append(episode * selected_level)
-                    agent_y.append(self.fitness / levels_to_run)
+                    agent_y.append(fitness / levels_to_run)
 
                 state = next_state
                 if done:
@@ -121,7 +120,7 @@ class CNNIndividual(Individual):
                 self.estimate = str(logger.get_estimate())
 
         self.nn.to(torch.device('cpu'))
-        global_fitness = self.fitness / levels_to_run
+        global_fitness = fitness / levels_to_run
         return global_fitness, self.nn.get_weights_biases()
 
 

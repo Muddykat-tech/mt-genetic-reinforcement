@@ -123,7 +123,7 @@ class Population:
         for i in range(generations):
             logger.print_progress(i)
 
-            self.logger.set_stage_name(f'Evaluating Fitness ({i}/{generations})')
+            self.logger.set_stage_name(f'Evaluating Fitness')
             self.new_population = [None for _ in range(self.population_size)]
             if use_multithreading:
                 # rough estimate of 8 times speed improvement!
@@ -131,12 +131,12 @@ class Population:
             else:
                 [p.calculate_fitness(levels, logger, render, index) for index, p in enumerate(self.old_population)]
 
-            self.logger.set_stage_name(f'Selecting, Crossing and Mutating ({i}/{generations})')
+            self.logger.set_stage_name(f'Selecting, Crossing and Mutating')
 
             run_generation(levels, self.old_population, self.new_population, self.population_settings, logger,
                            use_multithreading)
 
-            self.logger.set_stage_name(f'Updating Old Population ({i}/{generations})')
+            self.logger.set_stage_name(f'Updating Old Population')
 
             self.update_old_population()
 
