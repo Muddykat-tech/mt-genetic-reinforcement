@@ -27,19 +27,25 @@ if __name__ == '__main__':
     # Setup Population Settings for Genetic Algorithm Training. (Move this to a specified settings script)
     population_settings = {}
 
-    population_settings['agent-reinforcement'] = [2, ReinforcementCNNIndividual,
+    population_settings['agent-reinforcement'] = [1, ReinforcementCNNIndividual,
                                                   AgentParameters.MarioCudaAgent().agent_parameters]
-    population_settings['agent-generic'] = [0, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
+    population_settings['agent-generic'] = [11, CNNIndividual, AgentParameters.MarioCudaAgent().agent_parameters]
     population_settings['seed-agents'] = agents
     population_settings['p_mutation'] = 0.05
     population_settings['p_crossover'] = 0.8
     population_settings['n_generations'] = 500
     population_settings['render_mode'] = 0
-    population_settings['use_multithreading'] = 1
+    population_settings['use_multithreading'] = 0
     population_settings['n_threads'] = 16
 
     param = AgentParameters.MarioCudaAgent()
     replay_memory = ReplayMemory(param.agent_parameters['memory_size'])
 
-    population = Population(population_settings, replay_memory)
-    population.run(levels, MarioGAUtil.generation, '../../models/')
+    agent_x = []
+    agent_y = []
+    logger = LoadingLog.PrintLoader(99999, '=')
+    rl_agent = ReinforcementCNNIndividual(param.agent_parameters, replay_memory)
+    rl_agent.run_single(levels, logger, False, agent_x, agent_y)
+
+    # population = Population(population_settings, replay_memory)
+    # population.run(levels, MarioGAUtil.generation, '../../models/')

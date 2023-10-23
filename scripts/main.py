@@ -40,10 +40,9 @@ logger = LoadingLog.PrintLoader(param.get('experience_episodes'), 'x')
 agent_x = []  # Level
 agent_y = []  # Average Fitness
 run_batch = 100
-agents_to_load = ["seed_agents/Mario_1_1_9950000", "seed_agents/Mario_2_1_9925000", "seed_agents/Mario_3_1_10000000",
-                  "seed_agents/Mario_4_1_9950000"]
+agents_to_load = ["../new-models/-10-22-2023_16-41_NN=CNNIndividual_POPSIZE=200_GEN=100_PMUTATION_0.05_PCROSSOVER_0.8_BATCH_SIZE=32__I=0_SCORE=13.712500000000023"]
 agents_for_level = []
-train_time = '10m'
+train_time = '20h'
 
 for agent_name in agents_to_load:
     agent = CNNIndividual(AgentParameters.MarioCudaAgent().agent_parameters, replay_memory)
@@ -60,7 +59,7 @@ plt.bar(agent_x, agent_y, color='skyblue')
 plt.xlabel('Level')  # X-axis label
 plt.ylabel('Average Fitness')  # Y-axis label
 plt.title(
-    f'Average World Progression for Seed Agent on specialized levels')  # Attempted Merge Agent Train Time {train_time}')
+    f'Average World Progression for Genetic Algorithm Agent Trained for 20h')  # Attempted Merge Agent Train Time {train_time}')
 plt.xticks(range(len(agent_x)), level_names, rotation=45)
 plt.axhline(35, color='red', linestyle='--', label=f'Other World Level Flags')
 plt.axhline(30, color='blue', linestyle='--', label=f'3-1 Level Flag')

@@ -98,6 +98,7 @@ def process_individual(i, old_population, new_population, p_settings, logger, le
     # If children fitness is greater than the parents, update population
     with lock:  # Acquire the lock to ensure thread safety
         if child1.fitness + child2.fitness > parent1.fitness + parent2.fitness:
+
             new_population[i] = child1
             new_population[i + 1] = child2
         else:

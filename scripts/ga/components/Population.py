@@ -152,11 +152,12 @@ class Population:
                 best_individual = new_best_individual
 
         if len(self.generic_x_axis) > 0:
+            population_steps_done = sum(individual.steps_done for individual in self.old_population)
             plt.plot(self.generic_x_axis, self.generic_y_axis, color='red', marker='o')
             plt.title('Fitness of Population Over Time')
             plt.xlabel('Generation')
             plt.ylabel('Mean Fitness')
-            legend_info = f'Time Taken: {logger.get_estimate()}\nPopulation: {len(self.old_population)}'
+            legend_info = f'Steps Taken: {population_steps_done}\nPopulation: {len(self.old_population)}'
             plt.legend([legend_info], loc='upper left', fontsize=10)
             plt.grid(True)
             plt.savefig('../../graphs/Generic-' + self.get_file_name(self.now()) + '.png')
