@@ -1,6 +1,7 @@
 import copy
 import math
 import random
+import statistics
 import sys
 import time
 from abc import ABC, abstractmethod
@@ -49,6 +50,7 @@ class CNNIndividual(Individual):
         super().__init__(parameters)
         self.estimate = 'NA'
         self.replay_memory = replay_memory
+        self.level_fitness = {}
 
     def get_model(self, parameters) -> CNN:
         return CNN(parameters)
@@ -57,7 +59,7 @@ class CNNIndividual(Individual):
         return self.nn.agent_parameters[parameter]
 
     # This is where actions the agent take are calculated, fitness is modified here.
-    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0) -> Tuple[float, np.array]:
+    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0) -> Tuple[float, np.array, int]:
         fitness = 0
         steps_done = 0
         loading_progress = ['■ □ □', '□ ■ □', '□ □ ■']
@@ -119,13 +121,31 @@ class CNNIndividual(Individual):
                     break
 
             env.close()
-
+            self.level_fitness[levels[selected_level]] = fitness
             if logger is not None:
                 self.estimate = str(logger.get_estimate())
 
         self.nn.to(torch.device('cpu'))
-        global_fitness = fitness / levels_to_run
-        return global_fitness, self.nn.get_weights_biases(), steps_done
+
+        # Calculate the mean and standard deviation
+        values = list(self.level_fitness.values()) * 10
+        mean = statistics.mean(values)
+        stdev = statistics.stdev(values)
+
+        # Calculate weights with a power factor and a logarithmic curve
+        power_factor = 2  # You can adjust this factor as needed
+        weights = [(1 / ((stdev / mean) ** power_factor) if stdev > 0 else 1) for _ in values]
+
+        # Apply a logarithmic curve to the weights
+        log_base = 10  # You can adjust the base of the logarithm
+        weights = [math.log(weight, log_base) for weight in weights]
+
+        # Calculate the weighted sum
+        weighted_sum = sum(val * weight for val, weight in zip(values, weights)) / 10
+        print(self.level_fitness)
+        self.fitness = weighted_sum
+        print(" | Weighted fitness = " + str(self.fitness))
+        return weighted_sum, self.nn.get_weights_biases(), steps_done
 
 
 # Convolutional Neural Network Individual
@@ -232,8 +252,6 @@ class ReinforcementCNNIndividual(Individual):
         moving_fitness_updates = 0
         n_episodes = self.get('n_episodes')
         xp_episodes = self.get('experience_episodes')
-        start_time = datetime.datetime.now()
-        twenty_hours = datetime.timedelta(hours=20)
         end_training = False
 
         for level in levels:
@@ -288,19 +306,12 @@ class ReinforcementCNNIndividual(Individual):
                             "%m%d%Y_%H_%M_%S") + '_' + str(steps_done) + '.npy'
                         np.save(output_filename, self.nn.get_weights_biases())
 
-                    current_time = datetime.datetime.now()
-                    elapsed_time = current_time - start_time
-
-                    if elapsed_time >= twenty_hours:
-                        elapsed_seconds = int(elapsed_time.total_seconds())
-                        hours, remainder = divmod(elapsed_seconds, 3600)
-                        minutes, seconds = divmod(remainder, 60)
-                        elapsed_time_str = f"{hours:02d}-{minutes:02d}-{seconds:02d}"
+                    if steps_done >= 100000:
                         if self.get('q_val_plot_freq') > 0:
                             self.q_values_plot.save_image(self.get('log_dir') + '/graphs/')
                         self.fitness_plot.save_image(self.get('log_dir') + '/graphs/')
                         output_filename = self.get('log_dir') + '/models/RL_agent_' + datetime.datetime.now().strftime(
-                            "%m%d%Y_%H_%M_%S") + '_' + str(steps_done) + '_elapsed_time=' + elapsed_time_str + '.npy'
+                            "%m%d%Y_%H_%M_%S") + '_' + str(steps_done) + '.npy'
                         np.save(output_filename, self.nn.get_weights_biases())
                         end_training = True
                         break

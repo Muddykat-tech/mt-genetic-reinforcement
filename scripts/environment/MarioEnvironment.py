@@ -7,6 +7,7 @@ from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT
 from nes_py.wrappers import JoypadSpace
 
 from environment.util.EnviromentUtil import ConcatObs
+from ga.components.Individuals import CNNIndividual
 from nn.agents.CNN import CNN
 from nn.setup import AgentParameters
 
@@ -24,43 +25,3 @@ def create_mario_environment_random(environment_name='SuperMarioBrosRandomStages
     environment = JoypadSpace(environment, COMPLEX_MOVEMENT)
     environment = ConcatObs(env=environment, k=4, frame_skip=8)
     return environment
-
-
-def test_mario_model(agent):
-    done = False
-    state = env.reset()
-    for episode in range(20000):
-        time.sleep(0.005)
-        env.render()
-        state = state.to(agent.device)
-        action_probability = torch.nn.functional.softmax(
-            agent.forward(state).mul(agent.agent_parameters['action_conf']),
-            dim=1)
-        m = torch.distributions.Categorical(action_probability)
-        action = m.sample().item()
-
-        for _ in range(agent.agent_parameters['n_repeat']):
-            state, reward, done, _ = env.step(action)
-            if done:
-                break
-        if done:
-            break
-
-
-if __name__ == "__main__":
-    # Environment Setup
-    env = create_mario_environment_random()
-
-    model_name = '-09-19-2023_03-38_NN=CNNIndividual_POPSIZE=200_GEN=25_PMUTATION_0.05_PCROSSOVER_0.8_BATCH_SIZE=32__I=0_SCORE=307.9333333333238'
-
-    print(env.action_space)
-
-    # Create and load a Model
-    model = CNN(AgentParameters.MarioCudaAgent().agent_parameters)
-    model.load('../../models/' + model_name + '.npy')
-
-    for _ in range(12):
-        env.reset()
-        test_mario_model(model)
-
-    env.close()

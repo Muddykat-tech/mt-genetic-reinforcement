@@ -16,11 +16,27 @@ from ga.util.ReplayMemory import ReplayMemory
 from nn.setup import AgentParameters
 
 
+def test_mario_model(agent, input_levels, index=0):
+    agent.run_single(input_levels, None, render=True, index=index)
+
+
+if __name__ == "__main__":
+    # Environment Setup
+    model_name = 'MERGED-10-09-2023_17-53_NN=CNNIndividual_POPSIZE=32_GEN=25_PMUTATION_0.05_PCROSSOVER_0.8_BATCH_SIZE=32__I=0_SCORE=35.49999999999995'
+    levels = ["SuperMarioBros-1-1-v0", "SuperMarioBros-2-1-v0", "SuperMarioBros-3-1-v0", "SuperMarioBros-4-1-v0"]
+
+    # Create and load a Model
+    model = CNNIndividual(AgentParameters.MarioCudaAgent().agent_parameters, None)
+    model.nn.load('../models/' + model_name + '.npy')
+
+    test_mario_model(model, levels)
+
+
 def run_single_wrapper(level, i, num_threads, run_batch):
     agents_to_load_count = len(agents_for_level)
 
     def run_single_with_index(index):
-        fitness, _ = agents_for_level[index % agents_to_load_count].run_single([level], None, render=False, index=index)
+        fitness, _, steps = agents_for_level[index % agents_to_load_count].run_single([level], None, render=False, index=index)
         return fitness
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
@@ -40,9 +56,9 @@ logger = LoadingLog.PrintLoader(param.get('experience_episodes'), 'x')
 agent_x = []  # Level
 agent_y = []  # Average Fitness
 run_batch = 100
-agents_to_load = ["../new-models/-10-22-2023_16-41_NN=CNNIndividual_POPSIZE=200_GEN=100_PMUTATION_0.05_PCROSSOVER_0.8_BATCH_SIZE=32__I=0_SCORE=13.712500000000023"]
+agents_to_load = ["MERGED-10-09-2023_17-53_NN=CNNIndividual_POPSIZE=32_GEN=25_PMUTATION_0.05_PCROSSOVER_0.8_BATCH_SIZE=32__I=0_SCORE=35.49999999999995"]
 agents_for_level = []
-train_time = '20h'
+train_time = '100,000 frames'
 
 for agent_name in agents_to_load:
     agent = CNNIndividual(AgentParameters.MarioCudaAgent().agent_parameters, replay_memory)
@@ -59,7 +75,7 @@ plt.bar(agent_x, agent_y, color='skyblue')
 plt.xlabel('Level')  # X-axis label
 plt.ylabel('Average Fitness')  # Y-axis label
 plt.title(
-    f'Average World Progression for Genetic Algorithm Agent Trained for 20h')  # Attempted Merge Agent Train Time {train_time}')
+    f'Average World Progression for a world 1-1 DQN Agent Trained for {train_time}')  # Attempted Merge Agent Train Time {train_time}')
 plt.xticks(range(len(agent_x)), level_names, rotation=45)
 plt.axhline(35, color='red', linestyle='--', label=f'Other World Level Flags')
 plt.axhline(30, color='blue', linestyle='--', label=f'3-1 Level Flag')
