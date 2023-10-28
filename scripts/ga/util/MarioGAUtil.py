@@ -8,12 +8,13 @@ from typing import List, Tuple
 import numpy as np
 
 from environment.util import LoadingLog
-from ga.components.Individuals import Individual
+from ga.components.Individuals import Individual, CNNIndividual, ReinforcementCNNIndividual
 from concurrent.futures import ThreadPoolExecutor, wait
 
 from concurrent.futures import ThreadPoolExecutor, wait
 
 lock = threading.Lock()
+dqn_agent = None
 
 
 def crossover(parent1_weights_biases: np.array, parent2_weights_biases: np.array, p: float):
@@ -55,8 +56,9 @@ def elitism(population: List[Individual]) -> List[Individual]:
 
 
 def tournament_selection(population: List[Individual]) -> Tuple[Individual, Individual]:
-    # Select 20 potential parents
-    parents = random.choices(population, k=10)
+    # Select 2 potential parents
+    pop_percent = int(len(population) / 2)
+    parents = random.sample(population, k=pop_percent)
     # Get the best two of the random selection
     parents = sorted(parents, key=lambda agent: agent.fitness, reverse=True)
 
@@ -69,7 +71,7 @@ def statistics(population: List[Individual]):
     return np.mean(population_fitness), np.min(population_fitness), np.max(population_fitness)
 
 
-def process_individual(i, old_population, new_population, p_settings, logger, levels):
+def process_individual(i, old_population, new_population, p_settings, logger, levels, generation_id):
     logger.tick()
     p_crossover = p_settings['p_crossover']
     p_mutation = p_settings['p_crossover']
@@ -77,6 +79,10 @@ def process_individual(i, old_population, new_population, p_settings, logger, le
 
     # Selection
     parent1, parent2 = tournament_selection(old_population)
+    max_try = 10
+    for _ in range(max_try):
+        if isinstance(parent1, ReinforcementCNNIndividual) and isinstance(parent2, ReinforcementCNNIndividual):
+            parent1, parent2 = tournament_selection(old_population)
 
     # Crossover
     child1 = copy.deepcopy(parent1)
@@ -92,13 +98,18 @@ def process_individual(i, old_population, new_population, p_settings, logger, le
     child1.update_model()
     child2.update_model()
 
-    child1.calculate_fitness(levels, logger, render_mode, i)
-    child2.calculate_fitness(levels, logger, render_mode, i + 1)
+    child1.steps_done = parent1.steps_done
+    child2.steps_done = parent2.steps_done
 
-    # If children fitness is greater than the parents, update population
-    with lock:  # Acquire the lock to ensure thread safety
+    if not isinstance(child1, ReinforcementCNNIndividual):
+        child1.calculate_fitness(levels, logger, render_mode, i)
+
+    if not isinstance(child2, ReinforcementCNNIndividual):
+        child2.calculate_fitness(levels, logger, render_mode, i + 1)
+
+    with lock:
+        # If children fitness is greater than the parents, update population
         if child1.fitness + child2.fitness > parent1.fitness + parent2.fitness:
-
             new_population[i] = child1
             new_population[i + 1] = child2
         else:
@@ -106,8 +117,15 @@ def process_individual(i, old_population, new_population, p_settings, logger, le
             new_population[i + 1] = parent2
 
 
-def generation(levels, old_population, new_population, p_settings, logger: LoadingLog.PrintLoader, use_multithreading):
-    elite_population = []  # elitism(old_population) # Disabled Elitism for now
+def generation(levels, old_population, new_population, p_settings, logger: LoadingLog.PrintLoader, use_multithreading,
+               generation_id):
+    global dqn_agent
+
+    elite_population = []  # elitism(old_population)
+
+    for obj in old_population:
+        if isinstance(obj, ReinforcementCNNIndividual):
+            dqn_agent = obj
 
     if use_multithreading:
         num_threads = p_settings['n_threads']
@@ -115,21 +133,22 @@ def generation(levels, old_population, new_population, p_settings, logger: Loadi
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
             futures = []
             for i in range(0, len(old_population) - 1, 2):
-                future = executor.submit(process_individual, i, old_population, new_population, p_settings, logger, levels)
+                future = executor.submit(process_individual, i, old_population, new_population, p_settings, logger,
+                                         levels, generation_id)
                 futures.append(future)
 
             # Wait for all threads to finish
             wait(futures)
-
-        if len(elite_population) > 0:
-            with lock:  # Acquire the lock to ensure thread safety
-                new_population = sorted(new_population, key=lambda agent: agent.fitness, reverse=True)
-                new_population = new_population[:-len(elite_population)]
-                refined_population = new_population + elite_population
-                return refined_population
     else:
         for i in range(0, len(old_population) - 1, 2):
-            process_individual(i, old_population, new_population, p_settings, logger, levels)
+            process_individual(i, old_population, new_population, p_settings, logger, levels, generation_id)
+
+    # if len(elite_population) > 0:
+    #     new_population = sorted(new_population, key=lambda agent: agent.fitness, reverse=True)
+    #     new_population = new_population[:-len(elite_population)]
+    #     refined_population = new_population + elite_population
+    #     refined_population[-1] = dqn_agent
+    #     return refined_population
 
     return new_population
 

@@ -15,7 +15,7 @@ class MarioCudaAgent:
 
         # When Training the agent, how many episodes should it get?
         # 750 should be enough time to pass a level and perhaps a bit of the next
-        self.agent_parameters["n_episodes"] = 99999  # 800
+        self.agent_parameters["n_episodes"] = 9999  # 800
 
         # How should the agent train? using the GPU? Not compatible with Multithreading currently
         self.agent_parameters["gpu"] = 0
@@ -43,14 +43,13 @@ class MarioCudaAgent:
 
         # Reinforcement Parameters
         self.agent_parameters['learn_start'] = 10000  # 50
-        self.agent_parameters['experience_episodes'] = 99999
-        self.agent_parameters['memory_size'] = 1000000
+        self.agent_parameters['experience_episodes'] = 2
+        self.agent_parameters['memory_size'] = 100000
         self.agent_parameters['batch_size'] = 32
         self.agent_parameters['ep_end'] = 0.05
         self.agent_parameters['ep_start'] = 1.0  # 0.9
         self.agent_parameters['ep_decay'] = 500000  # 1000
-        self.agent_parameters[
-            'reward_max_x_change'] = 24  # Prevent huge rewards for x-position changes when Mario enters/exits pipes, etc.
+        self.agent_parameters['reward_max_x_change'] = 24  # Prevent huge rewards for x-position changes when Mario enters/exits pipes, etc.
         self.agent_parameters['gamma'] = 0.98  # 0.99
         self.agent_parameters['tau'] = 0.005
         self.agent_parameters['train_freq'] = 4

@@ -3,6 +3,7 @@ import math
 import random
 import statistics
 import sys
+import threading
 import time
 from abc import ABC, abstractmethod
 from collections import namedtuple, deque
@@ -11,14 +12,30 @@ from typing import Tuple
 
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
 from torch import optim
 
 from environment import MarioEnvironment
+from ga.util import Holder
 from ga.util.ReplayMemory import Transition
 from nn.agents.CNN import CNN
 from nn.preprocess import preproc
-from dialog import Dialog
 import datetime
+
+lock = threading.Lock
+
+
+def compute_weighted_fitness(values, similarity_weight, score_weight):
+    n = len(values)
+    sum_of_values = sum(values)
+    abs_diff_sum = 0
+
+    for i in range(n):
+        for j in range(n):
+            abs_diff_sum += abs(values[i] - values[j])
+
+    x = (1/n) * (similarity_weight * (sum_of_values - abs_diff_sum) + score_weight * sum_of_values)  # Normalize the equation
+    return x
 
 
 # Abstract Individual Class that has base functions the GA can call upon
@@ -26,11 +43,12 @@ class Individual(ABC):
     def __init__(self, parameters):
         self.nn = self.get_model(parameters)
         self.fitness = 0.0
-        self.steps_done = 0.0
+        self.steps_done = 0
         self.weights_biases: np.array = None
 
-    def calculate_fitness(self, levels, logger, render, index) -> None:
-        self.fitness, self.weights_biases, self.steps_done = self.run_single(levels, logger, render, index=index)
+    def calculate_fitness(self, levels, logger, render, index, generation) -> None:
+        self.fitness, self.weights_biases, self.steps_done = self.run_single(levels, logger, render, index=index,
+                                                                             generation=generation)
 
     def update_model(self) -> None:
         self.nn.update_weights_biases(self.weights_biases)
@@ -40,16 +58,20 @@ class Individual(ABC):
         pass
 
     @abstractmethod
-    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0) -> Tuple[float, np.array, int]:
+    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0, generation=0) -> Tuple[
+        float, np.array, int]:
         pass
 
 
 # Convolutional Neural Network Individual
+
 class CNNIndividual(Individual):
-    def __init__(self, parameters, replay_memory):
+    def __init__(self, parameters, memory_plot_x, memory_plot_y):
         super().__init__(parameters)
         self.estimate = 'NA'
-        self.replay_memory = replay_memory
+        self.replay_memory = Holder.replay_memory
+        self.memory_plot_x = memory_plot_x
+        self.memory_plot_y = memory_plot_y
         self.level_fitness = {}
 
     def get_model(self, parameters) -> CNN:
@@ -58,13 +80,21 @@ class CNNIndividual(Individual):
     def get(self, parameter):
         return self.nn.agent_parameters[parameter]
 
+    def shannon_entropy(self, probabilities):
+        # Calculate Shannon entropy
+        entropy = -sum(p * np.log2(p) for p in probabilities if p > 0)
+        return entropy
+
     # This is where actions the agent take are calculated, fitness is modified here.
-    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0) -> Tuple[float, np.array, int]:
-        fitness = 0
+    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0, generation=0) -> Tuple[
+        float, np.array, int]:
         steps_done = 0
         loading_progress = ['■ □ □', '□ ■ □', '□ □ ■']
         levels_to_run = len(levels)
+        fitness = 0
+        self.level_fitness = {}
         for selected_level in range(levels_to_run):
+            fitness = 0
             env = MarioEnvironment.create_mario_environment(levels[selected_level])
             global next_state
             state, old_info = env.reset()
@@ -105,11 +135,12 @@ class CNNIndividual(Individual):
                 old_info = info
                 reward /= 100  # 15
                 fitness += reward
+                self.fitness = fitness
                 # Format the generic agent data to ensure it's compatible with Reinforcement Agents' memory
-                reward = torch.tensor([reward])
-                action = torch.tensor([[action]], device=self.nn.device, dtype=torch.long)
-
                 if self.replay_memory is not None:
+                    reward = torch.tensor([reward])
+                    action = torch.tensor([[action]], device=self.nn.device, dtype=torch.long)
+
                     self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
 
                 if isinstance(agent_x, list):
@@ -127,38 +158,26 @@ class CNNIndividual(Individual):
 
         self.nn.to(torch.device('cpu'))
 
-        # Calculate the mean and standard deviation
-        values = list(self.level_fitness.values()) * 10
-        mean = statistics.mean(values)
-        stdev = statistics.stdev(values)
-
-        # Calculate weights with a power factor and a logarithmic curve
-        power_factor = 2  # You can adjust this factor as needed
-        weights = [(1 / ((stdev / mean) ** power_factor) if stdev > 0 else 1) for _ in values]
-
-        # Apply a logarithmic curve to the weights
-        log_base = 10  # You can adjust the base of the logarithm
-        weights = [math.log(weight, log_base) for weight in weights]
-
-        # Calculate the weighted sum
-        weighted_sum = sum(val * weight for val, weight in zip(values, weights)) / 10
-        print(self.level_fitness)
-        self.fitness = weighted_sum
-        print(" | Weighted fitness = " + str(self.fitness))
-        return weighted_sum, self.nn.get_weights_biases(), steps_done
+        # retrieve the fitness score for the different levels
+        # values = list(self.level_fitness.values())
+        # w1 = 0.25
+        # w2 = 0.75
+        # self.fitness = compute_weighted_fitness(values, w1, w2)
+        self.fitness = fitness
+        self.steps_done += steps_done
+        return self.fitness, self.nn.get_weights_biases(), self.steps_done
 
 
 # Convolutional Neural Network Individual
 class ReinforcementCNNIndividual(Individual):
-    def __init__(self, parameters, memory):
+    def __init__(self, parameters, memory_plot_x, memory_plot_y):
         super().__init__(parameters)
-        if self.get('q_val_plot_freq') > 0:
-            self.q_values_plot = Dialog()
-        self.fitness_plot = Dialog()
         self.temp = True
+        self.memory_plot_x = memory_plot_x
+        self.fitness_plot = memory_plot_y
         self.fitness = 0.0
         self.estimate = 'NA'
-        self.replay_memory = memory
+        self.replay_memory = Holder.replay_memory
         self.target_nn = self.get_model(parameters)
         self.optimizer = optim.Adam(self.nn.parameters(), lr=0.0000625, betas=(0.9, 0.999), eps=0.00015)
         self.frames = np.zeros(
@@ -189,11 +208,13 @@ class ReinforcementCNNIndividual(Individual):
             greedy_act = np.argmax(net_out)
             max_q = net_out[greedy_act]
 
-            if self.get('q_val_plot_freq') > 0 and steps_done % self.get('q_val_plot_freq') == 0:
-                self.q_values_plot.add_data_point("bestq", steps_done, [max_q], True, True)
-                self.q_values_plot.update_image('eps_threshold = ' + str(eps_threshold))
+            # if self.get('q_val_plot_freq') > 0 and steps_done % self.get('q_val_plot_freq') == 0:
+            #     self.q_values_plot.add_data_point("bestq", steps_done, [max_q], True, True)
+            #     self.q_values_plot.update_image('eps_threshold = ' + str(eps_threshold))
 
         steps_done += 1
+        memsize = len(self.replay_memory.memory)
+        self.memory_plot_x.append(memsize)
 
         if sample > eps_threshold:
             return greedy_act, steps_done
@@ -216,12 +237,12 @@ class ReinforcementCNNIndividual(Individual):
         action_batch = torch.tensor(batch.action).to(self.nn.device).unsqueeze(1)
         reward_batch = torch.cat(batch.reward).to(self.nn.device)
 
-        # # Generates the first image of all states in the state buffer
+        # Generates the first image of all states in the state buffer
         # if self.temp:
-        #     preproc.generate_image(84, 84, state_batch[0][0], 0)
-        #     preproc.generate_image(84, 84, state_batch[0][1], 1)
-        #     preproc.generate_image(84, 84, state_batch[0][2], 2)
-        #     preproc.generate_image(84, 84, state_batch[0][3], 3)
+        #     preproc.generate_image(84, 84, state_batch[3][0], 0)
+        #     preproc.generate_image(84, 84, state_batch[3][1], 1)
+        #     preproc.generate_image(84, 84, state_batch[3][2], 2)
+        #     preproc.generate_image(84, 84, state_batch[3][3], 3)
         #     self.temp = False
 
         state_action_values = self.nn(state_batch).gather(1, action_batch).squeeze()
@@ -242,7 +263,8 @@ class ReinforcementCNNIndividual(Individual):
         loss.backward()
         self.optimizer.step()
 
-    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0) -> Tuple[float, np.array]:
+    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0, generation=0) -> Tuple[
+        float, np.array, int]:
         global next_state
         fitness = 0.0
         old_fitness = 0.0
@@ -254,7 +276,9 @@ class ReinforcementCNNIndividual(Individual):
         xp_episodes = self.get('experience_episodes')
         end_training = False
 
-        for level in levels:
+        levels_to_run = len(levels)
+        for selected_level in range(levels_to_run):
+            level = levels[selected_level]
             env = MarioEnvironment.create_mario_environment(level)
             state, info = env.reset()
             self.nn.to(self.nn.device)
@@ -299,17 +323,17 @@ class ReinforcementCNNIndividual(Individual):
                         self.target_nn.load_state_dict(self.nn.state_dict())
 
                     if steps_done % self.get('save_freq') == 0:
-                        if self.get('q_val_plot_freq') > 0:
-                            self.q_values_plot.save_image(self.get('log_dir') + '/graphs/')
-                        self.fitness_plot.save_image(self.get('log_dir') + '/graphs/')
+                        # if self.get('q_val_plot_freq') > 0:
+                        #     self.q_values_plot.save_image(self.get('log_dir') + '/graphs/')
+                        # self.fitness_plot.save_image(self.get('log_dir') + '/graphs/')
                         output_filename = self.get('log_dir') + '/models/RL_agent_' + datetime.datetime.now().strftime(
                             "%m%d%Y_%H_%M_%S") + '_' + str(steps_done) + '.npy'
                         np.save(output_filename, self.nn.get_weights_biases())
 
                     if steps_done >= 100000:
-                        if self.get('q_val_plot_freq') > 0:
-                            self.q_values_plot.save_image(self.get('log_dir') + '/graphs/')
-                        self.fitness_plot.save_image(self.get('log_dir') + '/graphs/')
+                        # if self.get('q_val_plot_freq') > 0:
+                        #     self.q_values_plot.save_image(self.get('log_dir') + '/graphs/')
+                        # self.fitness_plot.save_image(self.get('log_dir') + '/graphs/')
                         output_filename = self.get('log_dir') + '/models/RL_agent_' + datetime.datetime.now().strftime(
                             "%m%d%Y_%H_%M_%S") + '_' + str(steps_done) + '.npy'
                         np.save(output_filename, self.nn.get_weights_biases())
@@ -319,19 +343,15 @@ class ReinforcementCNNIndividual(Individual):
                     if done:
                         break
 
-                print(" | Steps: " + str(steps_done) + ", fitness: " + str(self.fitness) + ', got flag: ' + str(
-                    info['flag_get']))
-
                 # Plot smoothed running average of fitness
                 moving_fitness = moving_fitness_mom * moving_fitness + (1.0 - moving_fitness_mom) * self.fitness
                 moving_fitness_updates += 1
                 zero_debiased_moving_fitness = moving_fitness / (1.0 - moving_fitness_mom ** moving_fitness_updates)
-                self.fitness_plot.add_data_point("fitness", steps_done, [zero_debiased_moving_fitness], False, True)
-                self.fitness_plot.update_image('')
-
+                # self.fitness_plot.add_data_point("fitness", steps_done, [zero_debiased_moving_fitness], False, True)
+                self.fitness_plot.append(zero_debiased_moving_fitness)
                 if agent_x is not None:
-                    logger.print_progress(episode)
-                    agent_x.append(episode)
+                    logger.print_progress(episode * selected_level)
+                    agent_x.append(episode * selected_level)
                     agent_y.append(self.fitness)
 
                 # Reset the estimate after we've finished one training cycle
@@ -340,4 +360,13 @@ class ReinforcementCNNIndividual(Individual):
         self.nn.to(torch.device('cpu'))
         self.target_nn.to(torch.device('cpu'))
 
-        return fitness, self.nn.get_weights_biases(), steps_done
+        self.fitness = fitness
+        self.steps_done += steps_done
+        print(str(self.steps_done) + " | [" + str(len(self.replay_memory.memory)) + "]")
+
+        # why is the holder needed? I have no fucking clue
+        # But for some reason without it I get false readings in the Population class, so instead of treating the
+        # self.replay_memory as a pointer to a list, I store it in HOLDER and reference it directly
+
+        Holder.memory_buffer_history.append(len(self.replay_memory.memory))
+        return fitness, self.nn.get_weights_biases(), self.steps_done
