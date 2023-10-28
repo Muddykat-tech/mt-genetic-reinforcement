@@ -1,10 +1,6 @@
 # mt-genetic-reinforcement
 My Minor Thesis project investigating the viability of merging attributes of reinforcement learning and genetic algorithms to combat poor generalization in reward sparse enviroments.
 
-This branch has code that was used to help generate results for a Mixed Population Experiement with a single DQN agent in a genetic algorithms population while the GA Agents provide experience to a population memory buffer.
-
-This buffer has replaced the internal buffer of the DQN, and can be found referenced in the  ```scripts/ga/util/Holder.py``` file.
-
 ## Setup
 Python Version 3.7 <br>
 Import dependencies in ```scripts/requirements.txt```
