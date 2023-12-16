@@ -43,7 +43,7 @@ class MarioCudaAgent:
 
         # Reinforcement Parameters
         self.agent_parameters['learn_start'] = 10000  # 50
-        self.agent_parameters['experience_episodes'] = 2
+        self.agent_parameters['experience_episodes'] = 3
         self.agent_parameters['memory_size'] = 100000
         self.agent_parameters['batch_size'] = 32
         self.agent_parameters['ep_end'] = 0.05
@@ -55,7 +55,7 @@ class MarioCudaAgent:
         self.agent_parameters['train_freq'] = 4
         self.agent_parameters['target_update_freq'] = 10000  # 2500
         self.agent_parameters['save_freq'] = 25000
-        self.agent_parameters['q_val_plot_freq'] = 10  # Set to zero to turn off Q-value plotting
+        self.agent_parameters['q_val_plot_freq'] = 0  # Set to zero to turn off Q-value plotting
         self.agent_parameters['log_dir'] = os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 

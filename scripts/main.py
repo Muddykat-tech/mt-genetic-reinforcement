@@ -57,13 +57,13 @@ logger = LoadingLog.PrintLoader(param.get('experience_episodes'), 'x')
 # Ignore 'generation' in the print logger, it's just the same agent running multiple times
 agent_x = []  # Level
 agent_y = []  # Average Fitness
-run_batch = 10
-agents_to_load = ["-10-28-2023_07-54_NN=CNNIndividual_POPSIZE=40_GEN=5_PMUTATION_0.02_PCROSSOVER_0.8_BATCH_SIZE=32__I=0_SCORE=6.862500000000002"]
+run_batch = 100
+agents_to_load = ["seed_agents/general/RL_agent_10172023_21_46_32_40000000"]
 agents_for_level = []
-train_time = '5 generations'
+train_time = '40 million steps'
 
 for agent_name in agents_to_load:
-    agent = CNNIndividual(AgentParameters.MarioCudaAgent().agent_parameters, replay_memory, [], [])
+    agent = CNNIndividual(AgentParameters.MarioCudaAgent().agent_parameters)
     agent.nn.load('../models/' + agent_name + '.npy')
     agents_for_level.append(agent)
 
@@ -77,8 +77,9 @@ plt.bar(agent_x, agent_y, color='skyblue')
 plt.xlabel('Level')  # X-axis label
 plt.ylabel('Average Fitness')  # Y-axis label
 plt.title(
-    f'Average World Progression for a weighted merge agent attempt trained for {train_time}')  # Attempted Merge Agent Train Time {train_time}')
+    f'Average World Progression for a DQN Agent trained for {train_time}')  # Attempted Merge Agent Train Time {train_time}')
 plt.xticks(range(len(agent_x)), level_names, rotation=45)
+plt.yticks(range(0, 45, 5), range(0, 45, 5))
 plt.axhline(35, color='red', linestyle='--', label=f'4-1 and 2-1 Level Flags')
 plt.axhline(30, color='blue', linestyle='--', label=f'3-1 and 1-1 Level Flag')
 plt.legend()

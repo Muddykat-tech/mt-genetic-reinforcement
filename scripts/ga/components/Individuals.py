@@ -58,7 +58,7 @@ class Individual(ABC):
         pass
 
     @abstractmethod
-    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0, generation=0) -> Tuple[
+    def run_single(self, levels, logger, render=False, index=0, generation=0) -> Tuple[
         float, np.array, int]:
         pass
 
@@ -66,12 +66,10 @@ class Individual(ABC):
 # Convolutional Neural Network Individual
 
 class CNNIndividual(Individual):
-    def __init__(self, parameters, memory_plot_x, memory_plot_y):
+    def __init__(self, parameters):
         super().__init__(parameters)
         self.estimate = 'NA'
         self.replay_memory = Holder.replay_memory
-        self.memory_plot_x = memory_plot_x
-        self.memory_plot_y = memory_plot_y
         self.level_fitness = {}
 
     def get_model(self, parameters) -> CNN:
@@ -86,7 +84,7 @@ class CNNIndividual(Individual):
         return entropy
 
     # This is where actions the agent take are calculated, fitness is modified here.
-    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0, generation=0) -> Tuple[
+    def run_single(self, levels, logger, render=False, index=0, generation=0) -> Tuple[
         float, np.array, int]:
         steps_done = 0
         loading_progress = ['■ □ □', '□ ■ □', '□ □ ■']
@@ -137,15 +135,11 @@ class CNNIndividual(Individual):
                 fitness += reward
                 self.fitness = fitness
                 # Format the generic agent data to ensure it's compatible with Reinforcement Agents' memory
-                if self.replay_memory is not None:
-                    reward = torch.tensor([reward])
-                    action = torch.tensor([[action]], device=self.nn.device, dtype=torch.long)
-
-                    self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
-
-                if isinstance(agent_x, list):
-                    agent_x.append(episode * selected_level)
-                    agent_y.append(fitness / levels_to_run)
+                # if self.replay_memory is not None:
+                #     reward = torch.tensor([reward])
+                #     action = torch.tensor([[action]], device=self.nn.device, dtype=torch.long)
+                #
+                #     self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
 
                 state = next_state
                 if done:
@@ -170,11 +164,9 @@ class CNNIndividual(Individual):
 
 # Convolutional Neural Network Individual
 class ReinforcementCNNIndividual(Individual):
-    def __init__(self, parameters, memory_plot_x, memory_plot_y):
+    def __init__(self, parameters):
         super().__init__(parameters)
         self.temp = True
-        self.memory_plot_x = memory_plot_x
-        self.fitness_plot = memory_plot_y
         self.fitness = 0.0
         self.estimate = 'NA'
         self.replay_memory = Holder.replay_memory
@@ -214,7 +206,7 @@ class ReinforcementCNNIndividual(Individual):
 
         steps_done += 1
         memsize = len(self.replay_memory.memory)
-        self.memory_plot_x.append(memsize)
+        Holder.memory_buffer_history.append(memsize)
 
         if sample > eps_threshold:
             return greedy_act, steps_done
@@ -263,7 +255,7 @@ class ReinforcementCNNIndividual(Individual):
         loss.backward()
         self.optimizer.step()
 
-    def run_single(self, levels, logger, render=False, agent_x=None, agent_y=None, index=0, generation=0) -> Tuple[
+    def run_single(self, levels, logger, render=False, index=0, generation=0) -> Tuple[
         float, np.array, int]:
         global next_state
         fitness = 0.0
@@ -310,6 +302,7 @@ class ReinforcementCNNIndividual(Individual):
 
                     fitness += reward
                     self.fitness = fitness
+
                     reward = torch.tensor([reward])
 
                     self.replay_memory.push(state, action, next_state, reward, not done, not info['flag_get'])
@@ -330,7 +323,7 @@ class ReinforcementCNNIndividual(Individual):
                             "%m%d%Y_%H_%M_%S") + '_' + str(steps_done) + '.npy'
                         np.save(output_filename, self.nn.get_weights_biases())
 
-                    if steps_done >= 100000:
+                    if steps_done >= 200000:
                         # if self.get('q_val_plot_freq') > 0:
                         #     self.q_values_plot.save_image(self.get('log_dir') + '/graphs/')
                         # self.fitness_plot.save_image(self.get('log_dir') + '/graphs/')
@@ -347,12 +340,14 @@ class ReinforcementCNNIndividual(Individual):
                 moving_fitness = moving_fitness_mom * moving_fitness + (1.0 - moving_fitness_mom) * self.fitness
                 moving_fitness_updates += 1
                 zero_debiased_moving_fitness = moving_fitness / (1.0 - moving_fitness_mom ** moving_fitness_updates)
+                Holder.fitness_memory.append(zero_debiased_moving_fitness)
+                Holder.fitness_memory_ticks.append(steps_done)
+
+                if steps_done % 25000 == 0:
+                    print("Milestone: " + str(steps_done / 200000))
+
                 # self.fitness_plot.add_data_point("fitness", steps_done, [zero_debiased_moving_fitness], False, True)
-                self.fitness_plot.append(zero_debiased_moving_fitness)
-                if agent_x is not None:
-                    logger.print_progress(episode * selected_level)
-                    agent_x.append(episode * selected_level)
-                    agent_y.append(self.fitness)
+                # self.fitness_plot.append(zero_debiased_moving_fitness)
 
                 # Reset the estimate after we've finished one training cycle
             env.close()
@@ -362,10 +357,8 @@ class ReinforcementCNNIndividual(Individual):
 
         self.fitness = fitness
         self.steps_done += steps_done
-        print(str(self.steps_done) + " | [" + str(len(self.replay_memory.memory)) + "]")
-
         # why is the holder needed? I have no fucking clue
-        # But for some reason without it I get false readings in the Population class, so instead of treating the
+        # But for some reason without it, I get false readings in the Population class, so instead of treating the
         # self.replay_memory as a pointer to a list, I store it in HOLDER and reference it directly
 
         Holder.memory_buffer_history.append(len(self.replay_memory.memory))

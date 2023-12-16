@@ -79,10 +79,6 @@ def process_individual(i, old_population, new_population, p_settings, logger, le
 
     # Selection
     parent1, parent2 = tournament_selection(old_population)
-    max_try = 10
-    for _ in range(max_try):
-        if isinstance(parent1, ReinforcementCNNIndividual) and isinstance(parent2, ReinforcementCNNIndividual):
-            parent1, parent2 = tournament_selection(old_population)
 
     # Crossover
     child1 = copy.deepcopy(parent1)
@@ -101,11 +97,11 @@ def process_individual(i, old_population, new_population, p_settings, logger, le
     child1.steps_done = parent1.steps_done
     child2.steps_done = parent2.steps_done
 
-    if not isinstance(child1, ReinforcementCNNIndividual):
-        child1.calculate_fitness(levels, logger, render_mode, i)
+    #if not isinstance(child1, ReinforcementCNNIndividual):
+    child1.calculate_fitness(levels, logger, render_mode, i, generation_id)
 
-    if not isinstance(child2, ReinforcementCNNIndividual):
-        child2.calculate_fitness(levels, logger, render_mode, i + 1)
+    #if not isinstance(child2, ReinforcementCNNIndividual):
+    child2.calculate_fitness(levels, logger, render_mode, i + 1, generation_id)
 
     with lock:
         # If children fitness is greater than the parents, update population
@@ -123,9 +119,9 @@ def generation(levels, old_population, new_population, p_settings, logger: Loadi
 
     elite_population = []  # elitism(old_population)
 
-    for obj in old_population:
-        if isinstance(obj, ReinforcementCNNIndividual):
-            dqn_agent = obj
+    # for obj in old_population:
+    #     if isinstance(obj, ReinforcementCNNIndividual):
+    #         dqn_agent = obj
 
     if use_multithreading:
         num_threads = p_settings['n_threads']

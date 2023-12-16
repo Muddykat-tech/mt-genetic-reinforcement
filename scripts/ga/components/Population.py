@@ -29,8 +29,6 @@ class Population:
     def __init__(self, population_settings):
         self.population_settings = population_settings
         self.old_population = []
-        self.memory_plot_x = []
-        self.memory_plot_y = []
         self.dqn_steps = 0.0
         generic_population = []
         reinforcement_population = []
@@ -41,7 +39,7 @@ class Population:
         if generic_agent_settings is not None:
             generic_agent = generic_agent_settings[1]
             generic_population = [
-                generic_agent(generic_agent_settings[2], self.memory_plot_x, self.memory_plot_y) for
+                generic_agent(generic_agent_settings[2]) for
                 _ in
                 range(generic_agent_settings[0])]
 
@@ -49,15 +47,13 @@ class Population:
         if reinforcement_agent_settings is not None:
             reinforcement_agent = reinforcement_agent_settings[1]  # Keep agent default settings
             reinforcement_population = [
-                reinforcement_agent(reinforcement_agent_settings[2], self.memory_plot_x,
-                                    self.memory_plot_y) for _ in
+                reinforcement_agent(reinforcement_agent_settings[2]) for _ in
                 range(reinforcement_agent_settings[0])]
 
         seed_agent_names = population_settings['seed-agents']
         if seed_agent_names is not None:
             for name in seed_agent_names:
-                model = CNNIndividual(AgentParameters.MarioCudaAgent().agent_parameters,
-                                      self.memory_plot_x, self.memory_plot_y)
+                model = CNNIndividual(AgentParameters.MarioCudaAgent().agent_parameters)
                 model.nn.load('../../models/seed_agents/' + name + '.npy')
                 seed_population.append(model)
 
@@ -150,49 +146,10 @@ class Population:
                                                  self.population_settings, logger,
                                                  use_multithreading, i)
 
-
-            hasDQN = False
-            for obj in self.new_population:
-                if isinstance(obj, ReinforcementCNNIndividual):
-                    hasDQN = True
-
-            if not hasDQN:
-                print(len(self.new_population))
-                print(str(self.new_population))
-                self.new_population = sorted(self.new_population, key=lambda agent: agent.fitness, reverse=True)
-                self.new_population[len(self.new_population)-1] = dqn_agent
-            else:
-                dqn_count = 0
-                for agent in self.new_population:
-                    if isinstance(agent, ReinforcementCNNIndividual):
-                        dqn_count += 1
-
-                # yeah, the code for this stuff is garbage, but I'm out of time to make something actually reasonable.
-                while dqn_count > 1:
-                    print("DQN Failsafe Active")
-                    agent_to_remove = None
-                    dqn_count = 0
-                    for agent in self.new_population:
-                        if isinstance(agent, ReinforcementCNNIndividual):
-                            dqn_count += 1
-                            agent_to_remove = agent
-                    print(str(self.new_population) + "\n")
-                    self.new_population.remove(agent_to_remove)
-                    donor = self.new_population[0]
-                    self.new_population.append(CNNIndividual(donor.nn.agent_parameters, donor.memory_plot_x, donor.memory_plot_y))
-                    dqn_count = 0
-                    for agent in self.new_population:
-                        if isinstance(agent, ReinforcementCNNIndividual):
-                            dqn_count += 1
-                    print(str(self.new_population) + "\n")
-                    print("Attempt Failed?")
-
-            count = 0
-            for obj in self.new_population:
-                if isinstance(obj, ReinforcementCNNIndividual):
-                    count = count + 1
-
-            print(f' | {count} DQN Agents in Population\n')
+            # A fairly dirty method of making it so only a single DQN agent is in the population while also being
+            # immune to the changes the GA places on it, do note that this slows things down a lot and is bad ~ Muddykat
+            # print("pop: " + str(self.new_population) + "\n")
+            # self.dqn_single_agent_hack(dqn_agent)
 
             self.logger.set_stage_name(f'Updating Old Population ')
 
@@ -235,6 +192,7 @@ class Population:
             plt.close()
 
         if len(Holder.memory_buffer_history) > 0:
+            Holder.memory_buffer_history = sorted(Holder.memory_buffer_history)
             plt.plot(Holder.memory_buffer_history, color='red', marker=',')
             plt.title('Memory Buffer of DQN Agent')
             plt.xlabel('Step')
@@ -266,3 +224,49 @@ class Population:
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
             [executor.submit(calculate_fitness_in_thread, index, p, levels, logger, render, generation) for index, p in
              enumerate(self.old_population)]
+
+    def dqn_single_agent_hack(self, dqn_agent):
+        hasDQN = False
+        for obj in self.new_population:
+            if isinstance(obj, ReinforcementCNNIndividual):
+                hasDQN = True
+
+        if not hasDQN:
+            print("Missing DQN")
+            print('Inputting the following agent: ' + str(type(dqn_agent).__name__) + "\n")
+            self.new_population = sorted(self.new_population, key=lambda agent: agent.fitness, reverse=True)
+            self.new_population[len(self.new_population) - 1] = dqn_agent
+
+            print("Population: " + str(self.new_population))
+        else:
+            dqn_count = 0
+            for agent in self.new_population:
+                if isinstance(agent, ReinforcementCNNIndividual):
+                    dqn_count += 1
+
+            # yeah, the code for this stuff is garbage, but I'm out of time to make something actually reasonable.
+            while dqn_count > 1:
+                print("DQN Failsafe Active")
+                agent_to_remove = None
+                dqn_count = 0
+                for agent in self.new_population:
+                    if isinstance(agent, ReinforcementCNNIndividual):
+                        dqn_count += 1
+                        agent_to_remove = agent
+                print(str(self.new_population) + "\n")
+                self.new_population.remove(agent_to_remove)
+                donor = self.new_population[0]
+                self.new_population.append(CNNIndividual(donor.nn.agent_parameters))
+                dqn_count = 0
+                for agent in self.new_population:
+                    if isinstance(agent, ReinforcementCNNIndividual):
+                        dqn_count += 1
+                print(str(self.new_population) + "\n")
+                print("Attempt Failed?")
+
+        count = 0
+        for obj in self.new_population:
+            if isinstance(obj, ReinforcementCNNIndividual):
+                count = count + 1
+
+        print(f' | {count} DQN Agents in Population\n')
